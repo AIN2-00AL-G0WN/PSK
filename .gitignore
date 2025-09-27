@@ -1,0 +1,121 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+.env
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# FastAPI / Uvicorn
+*.db
+*.pid
+*.log
+
+# PyCharm / VSCode / IDE stuff
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# PostgreSQL dumps
+*.sql
+*.dump
+
+# Migrations (if using Alembic or similar)
+migrations/versions/*.pyc
+migrations/versions/__pycache__/
+
+# Custom local configs
+config.ini
+*.local
+*.env.*
+
+# Logs
+logs/
+*.log
+
+# Coverage data
+.coverage
+coverage_html_report/
+
+# Profiling data
+.prof
+
+# Node.js (if frontend lives in same repo)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Optional - if using poetry
+.poetry/
+poetry.lock
+
+# Optional - if using pipenv
+Pipfile.lock
+
+# Optional - editor backup files
+*~
