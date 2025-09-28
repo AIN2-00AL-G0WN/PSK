@@ -63,7 +63,7 @@ async def permission_denied_handler(request: Request, exc: PermissionDeniedError
 async def app_error_handler(request: Request, exc: AppError):
     return JSONResponse(status_code=400, content={"detail": exc.message or "Application error"})
 
-# Dev startup: create tables and default admin user (DEV ONLY)
+# Dev startup: create tables and default admin,osv,hsv users (DEV ONLY)
 @app.on_event("startup")
 def startup():
     # ensure enum type exists first (prevents CREATE TABLE ordering issues)
@@ -75,8 +75,18 @@ def startup():
     db = SessionLocal()
     try:
         admin = db.query(User).filter(User.team_name == "ADMIN").first()
+        osv = db.query(User).filter(User.team_name == "OSV").first()
+        hsv = db.query(User).filter(User.team_name == "HSV").first()
         if not admin:
-            u = User(team_name="ADMIN", password_hash=get_password_hash("Rdl@12345"), contact_email="admin@example.com", is_admin=True)
+            u = User(team_name="ADMIN", user_name="admin", password_hash=get_password_hash("Rdl@12345"), contact_email="admin@example.com", is_admin=True)
+            db.add(u)
+            db.commit()
+        if not osv:
+            u = User(team_name="OSV", user_name="osv", password_hash=get_password_hash("Rdl@12345"), contact_email="osv@example.com", is_admin=False)
+            db.add(u)
+            db.commit()
+        if not hsv:
+            u = User(team_name="HSV", user_name="hsv", password_hash=get_password_hash("Rdl@12345"), contact_email="hsv@example.com", is_admin=False)
             db.add(u)
             db.commit()
     finally:
