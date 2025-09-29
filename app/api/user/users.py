@@ -27,7 +27,7 @@ def reserve(
             user_id=current_user.id,
             tester_name=req.tester_name,
             region=req.region,
-            team=current_user.team_name,
+            team=req.code_type,
             contact_email=current_user.contact_email,
         )
 
@@ -73,9 +73,13 @@ def release_code(
         )
         db.commit()
         return {"released": released, "requested": payload.code, "clearance_id": payload.clearance_id}
+    except ValueError:
+        db.rollback()
+        # logger.exception(f"Code '{payload.code}' not found.")
+        return json_error(404,f"Code '{payload.code}' not found.","Failed to release reserved codes.")
     except Exception:
         db.rollback()
-        logger.exception("release_reserved failed")
+        # logger.exception("release_reserved failed")
         return json_error(500, "release_reserved_failed", "Failed to release reserved codes.")
 
 
@@ -99,5 +103,5 @@ def mark_non_usable_endpoint(
         }
     except Exception:
         db.rollback()
-        logger.exception("mark_non_usable failed")
+        # logger.exception("mark_non_usable failed")
         return json_error(500, "mark_non_usable_failed", "Failed to mark codes as non-usable.")
