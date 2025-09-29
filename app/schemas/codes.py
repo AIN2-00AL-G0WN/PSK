@@ -6,7 +6,8 @@ from datetime import datetime
 
 class ReserveRequest(BaseModel):
     tester_name: str = Field(..., example="John Doe")
-    region: Optional[str] = Field(None, example="Asia")
+    region: str = Field(None, example="Asia")
+    code_type: str = Field(None, example="OSV")
 
     class Config:
         from_attributes = True
@@ -14,6 +15,7 @@ class ReserveRequest(BaseModel):
 
 class ReserveResponse(BaseModel):
     code: constr(min_length=16, max_length=16)
+    code_type: str = Field(None, example="OSV")
     reservation_token: uuid.UUID
 
     class Config:
