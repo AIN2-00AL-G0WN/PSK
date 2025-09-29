@@ -15,12 +15,6 @@ def reserve_one_code(
     team: str,
     contact_email: str,
 ) -> Code:
-    """
-    Reserve a code atomically using ORM and log it in the same transaction.
-    1. Try to reserve a code with type == team
-    2. Fallback to code_type='COMMON'
-    Returns the reserved Code object.
-    """
 
     def _reserve_code(code_type: str) -> Code | None:
         query = db.query(Code).filter(
@@ -85,13 +79,9 @@ def mark_non_usable(
     code: str,
     reason: str | None = None
 ) -> str:
-    """
-    Mark a single code as NON_USABLE and set the note to the given reason (if any).
-    Returns the code string if successfully updated, otherwise raises an error.
-    """
     now = datetime.utcnow()
 
-    # Lock and retrieve the code row
+
     code_row = (
         db.query(Code)
         .filter(Code.code == code)
@@ -102,17 +92,17 @@ def mark_non_usable(
     if not code_row:
         raise ValueError(f"Code '{code}' not found.")
 
-    # Update code status and reset related fields
+
     code_row.status = CodeStatus.NON_USABLE.value
     code_row.reserved_until = None
     code_row.reservation_token = None
     code_row.user_id = None
     code_row.tester_name = None
-    code_row.note = reason  # Direct assignment of input note
+    code_row.note = reason
 
-    db.flush()  # Persist updates before logging
+    db.flush()
 
-    # Log the action
+
     db.add(Log(
         code=code,
         action=CodeAction.BLOCKED.value,
@@ -133,10 +123,7 @@ def release_reserved_code(
     clearance_id: Optional[str] = None,
     note: Optional[str] = None,
 ) -> str:
-    """
-    Releases a reserved code and logs the action.
-    Logs include user, optional clearance_id, and optional note.
-    """
+
 
     now = datetime.utcnow()
 
@@ -158,7 +145,7 @@ def release_reserved_code(
 
     result = db.execute(stmt).fetchone()
     if not result:
-        return []
+        raise ValueError(f"Code '{code}' not found.")
 
     # Step 2: Add log entry
     log_entry = Log(
@@ -176,10 +163,7 @@ def release_reserved_code(
 
 
 def list_of_codes(db: Session, user):
-    """
-    Return codes reserved by the current user.
-    This is the list shown to user in UI (with release action).
-    """
+
     codes = (
         db.query(
             Code.code,
