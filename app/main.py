@@ -5,6 +5,7 @@ from app.db.base import Base
 from app.db.engine import engine, SessionLocal
 from app.api.auth import router as auth_router
 from app.api.user.users import router as users_router
+from app.api.admin.admin import router as admin_router
 from app.core.exceptions import AppError, NoCodesAvailableError, ReservationExpiredError, InvalidReservationError, PermissionDeniedError
 from app.db.models import User
 from app.core.security import get_password_hash
@@ -13,7 +14,7 @@ app = FastAPI(title="promo-tool")
 
 app.include_router(auth_router)
 app.include_router(users_router)
-
+app.include_router(admin_router)
 origins = [
     "http://192.168.0.115:8080/",  # React dev server
     # Add prod domain here if deployed

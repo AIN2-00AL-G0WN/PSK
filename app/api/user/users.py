@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.schemas.codes import ReserveRequest, ReserveResponse, BatchCodes, MarkNonUsableRequest, MarkNonUsableResponse
+from app.schemas.users.users import ReserveRequest, ReserveResponse, BatchCodes, MarkNonUsableRequest, MarkNonUsableResponse
 from app.db.users import crud
 from app.db.models import User
 from app.api.deps import get_db, get_tx_db, get_current_user
