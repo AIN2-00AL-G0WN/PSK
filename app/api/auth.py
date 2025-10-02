@@ -29,6 +29,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         team_name=user.team_name,
         code_type=code_type
     )
+    # return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzU5MzA3OTI1LCJ0ZWFtX25hbWUiOiJPU1YiLCJjb2RlX3R5cGUiOiJPU1YifQ.PdA7OqiriUF4ORjYZcdRM1nm5RVECI0GStqYCF3zdiw"
 
     return Token(access_token=token, expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
 

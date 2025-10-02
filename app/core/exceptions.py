@@ -35,3 +35,9 @@ class InvalidReservationError(AppError):
 
 class PermissionDeniedError(AppError):
     """ raised when non-admin tries an admin-only action """
+
+class UserNotFound(AppError):
+    """raised when user is not present in the database"""
+
+class UserHasReservedCodesError(AppError):
+    """raised when the admin tries to delete the user, but the user has some reserved codes"""

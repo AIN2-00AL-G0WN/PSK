@@ -39,6 +39,7 @@ class UserTeam(str, enum.Enum):
     OSV = "OSV"
     HSV = "HSV"
     ADMIN = "ADMIN"
+    # HOSV = "HOSV"
 
 class User(Base):
     __tablename__ = "users"
@@ -47,9 +48,10 @@ class User(Base):
     team_name = Column(
         SQLEnum(UserTeam, name="user_team", native_enum=True),
         nullable=False,
-        unique=True,
+        unique=False,
         index=True,
     )
+    # team_name = Column(String(100),nullable=False, unique=False)
     user_name = Column(String(320), nullable=False, unique=False)
     password_hash = Column(Text, nullable=False)
     contact_email = Column(String(320), nullable=False, unique=True)
@@ -66,6 +68,7 @@ class User(Base):
 class Code(Base):
     __tablename__ = "codes"
 
+    # id = Column(BigInteger, primary_key=True, index=True)
     code = Column(CHAR(16), primary_key=True, index=True)
     user_id = Column(BigInteger, ForeignKey("users.id"), nullable=True, index=True)
     tester_name = Column(Text, nullable=True)
