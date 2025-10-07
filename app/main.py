@@ -1,16 +1,68 @@
+
+from contextlib import asynccontextmanager
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text as sa_text
 from app.db.base import Base
 from app.db.engine import engine, SessionLocal
-from app.api.auth import router as auth_router
+from app.api.auth.auth import router as auth_router
 from app.api.user.users import router as users_router
 from app.api.admin.admin import router as admin_router
 from app.core.exceptions import AppError, NoCodesAvailableError, ReservationExpiredError, InvalidReservationError, PermissionDeniedError
 from app.db.models import User
 from app.core.security import get_password_hash
 from fastapi.middleware.cors import CORSMiddleware
-app = FastAPI(title="promo-tool")
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+executor = ThreadPoolExecutor(max_workers=15)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    loop = asyncio.get_running_loop()
+    loop.set_default_executor(executor)
+
+    # DB setup
+    ensure_enum_exists()
+    Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+    try:
+        users = {
+            "ADMIN": {"user_name": "admin", "email": "admin@example.com", "is_admin": True},
+            "OSV": {"user_name": "osv", "email": "osv@example.com", "is_admin": False},
+            "HSV": {"user_name": "hsv", "email": "hsv@example.com", "is_admin": False},
+        }
+
+        for team, data in users.items():
+            existing = db.query(User).filter(User.team_name == team).first()
+            if not existing:
+                user = User(
+                    team_name=team,
+                    user_name=data["user_name"],
+                    password_hash=get_password_hash("Rdl@12345"),
+                    contact_email=data["email"],
+                    is_admin=data["is_admin"],
+                )
+                db.add(user)
+
+        db.commit()
+
+    finally:
+        db.close()
+
+    logger.info("✅ Startup complete. App is running.")
+    yield
+    logger.info("🛑 Shutting down thread pool...")
+    executor.shutdown(wait=True)
+    logger.info("✅ Thread pool shut down successfully.")
+
+app = FastAPI(title="promo-tool",lifespan=lifespan)
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -65,30 +117,3 @@ async def app_error_handler(request: Request, exc: AppError):
     return JSONResponse(status_code=400, content={"detail": exc.message or "Application error"})
 
 # Dev startup: create tables and default admin,osv,hsv users (DEV ONLY)
-@app.on_event("startup")
-def startup():
-    # ensure enum type exists first (prevents CREATE TABLE ordering issues)
-    ensure_enum_exists()
-
-    # now create tables
-    Base.metadata.create_all(bind=engine)
-
-    db = SessionLocal()
-    try:
-        admin = db.query(User).filter(User.team_name == "ADMIN").first()
-        osv = db.query(User).filter(User.team_name == "OSV").first()
-        hsv = db.query(User).filter(User.team_name == "HSV").first()
-        if not admin:
-            u = User(team_name="ADMIN", user_name="admin", password_hash=get_password_hash("Rdl@12345"), contact_email="admin@example.com", is_admin=True)
-            db.add(u)
-            db.commit()
-        if not osv:
-            u = User(team_name="OSV", user_name="osv", password_hash=get_password_hash("Rdl@12345"), contact_email="osv@example.com", is_admin=False)
-            db.add(u)
-            db.commit()
-        if not hsv:
-            u = User(team_name="HSV", user_name="hsv", password_hash=get_password_hash("Rdl@12345"), contact_email="hsv@example.com", is_admin=False)
-            db.add(u)
-            db.commit()
-    finally:
-        db.close()

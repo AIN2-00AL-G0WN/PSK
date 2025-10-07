@@ -9,20 +9,24 @@ from typing import Optional
 
 def reserve_one_code(
     db: Session,
-    user_id: int,
+    user: User,
     tester_name: str | None,
     region: str | None,
     team: str,
     contact_email: str,
 ) -> Code:
-
-    def _reserve_code(code_type: str) -> Code | None:
+    def _reserve_code(
+        code_type: str, region: Optional[str] = None, user_id: int = None, tester_name: str = None,
+        contact_email: str = None
+    ) -> Code | None:
+        # Filter by status and code_type
         query = db.query(Code).filter(
             Code.status == CodeStatus.CAN_BE_USED.value,
             Code.code_type == code_type,
         )
 
-        if region:
+        # Only filter by region if the code_type is not COMMON
+        if code_type != CodeType.COMMON.value and region:
             query = query.filter(Code.region == region)
 
         query = query.order_by(Code.requested_at.nullsfirst())  # oldest first
@@ -32,7 +36,7 @@ def reserve_one_code(
         if not candidate:
             return None
 
-        now = datetime.utcnow()
+        now = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
 
         # Update fields
         candidate.user_id = user_id
@@ -48,7 +52,7 @@ def reserve_one_code(
         log = Log(
             code=candidate.code,
             action=CodeAction.RESERVED,
-            user_name=tester_name,
+            user_name=user.user_name,
             contact_email=contact_email,
             logged_at=now,
             tester_name=tester_name,
@@ -58,61 +62,18 @@ def reserve_one_code(
 
         return candidate
 
-    # Priority 1: Try with team-specific code
-    row = _reserve_code(code_type=team)
+        # Priority 1: Try with team-specific code
+    row = _reserve_code(user_id=user.id,tester_name=tester_name,contact_email=contact_email,code_type=team, region=region)
     if row:
         return row
 
     # Priority 2: Fallback to COMMON code
-    row = _reserve_code(code_type=CodeType.COMMON.value)
+    row = _reserve_code(user_id=user.id,tester_name=tester_name,contact_email=contact_email,code_type=CodeType.COMMON.value, region=None)  # Ignore region when code type is COMMON
     if row:
         return row
 
     # None found
     raise NoCodesAvailableError()
-
-
-
-def mark_non_usable(
-    db: Session,
-    user: User,
-    code: str,
-    reason: str | None = None
-) -> str:
-    now = datetime.utcnow()
-
-
-    code_row = (
-        db.query(Code)
-        .filter(Code.code == code)
-        .with_for_update()
-        .first()
-    )
-
-    if not code_row:
-        raise ValueError(f"Code '{code}' not found.")
-
-
-    code_row.status = CodeStatus.NON_USABLE.value
-    code_row.reserved_until = None
-    code_row.reservation_token = None
-    code_row.user_id = None
-    code_row.tester_name = None
-    code_row.note = reason
-
-    db.flush()
-
-
-    db.add(Log(
-        code=code,
-        action=CodeAction.BLOCKED.value,
-        user_name=user.user_name,
-        contact_email=user.contact_email,
-        logged_at=now,
-        note=reason
-    ))
-
-    return code_row.code
 
 
 
@@ -124,8 +85,7 @@ def release_reserved_code(
     note: Optional[str] = None,
 ) -> str:
 
-
-    now = datetime.utcnow()
+    now = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
 
     # Step 1: Update the reserved code
     stmt = (
@@ -158,9 +118,7 @@ def release_reserved_code(
         note=note,
     )
     db.add(log_entry)
-
     return code
-
 
 def list_of_codes(db: Session, user):
 
@@ -179,16 +137,57 @@ def list_of_codes(db: Session, user):
         .all()
     )
 
-    results = []
-    for c in codes:
-        results.append({
-            "code": c.code,
-            "tester_name": c.tester_name,
-            "region": c.region,
-            "requested_at": c.requested_at,
-            "reservation_token": str(c.reservation_token) if c.reservation_token else None,
-            "status": c.status.value if hasattr(c.status, 'value') else c.status,
-            "note": c.note,
-        })
+    return codes
 
-    return results
+
+
+#
+# def mark_non_usable(
+#     db: Session,
+#     user: User,
+#     code: str,
+#     reason: str | None = None
+# ) -> str:
+#     try:
+#         now = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
+#
+#
+#         code_row = (
+#             db.query(Code)
+#             .filter(Code.code == code)
+#             .with_for_update()
+#             .first()
+#         )
+#
+#         if not code_row:
+#             raise ValueError(f"Code '{code}' not found.")
+#
+#
+#         code_row.status = CodeStatus.NON_USABLE.value
+#         code_row.reserved_until = None
+#         code_row.reservation_token = None
+#         code_row.user_id = None
+#         code_row.tester_name = None
+#         code_row.note = reason
+#
+#         db.flush()
+#
+#
+#         db.add(Log(
+#             code=code,
+#             action=CodeAction.BLOCKED.value,
+#             user_name=user.user_name,
+#             contact_email=user.contact_email,
+#             logged_at=now,
+#             note=reason
+#         ))
+#         db.commit()
+#         return code_row.code
+#     except ValueError as e:
+#         db.rollback()
+#         raise  e
+#     except  Exception as e:
+#         db.rollback()
+#         raise e
+
+

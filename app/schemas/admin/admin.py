@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, constr, Field
-from typing import Optional
+from typing import Optional,Literal
 import uuid
 from datetime import datetime
 
@@ -66,3 +66,33 @@ class UpdateUserResponse(CreateUserResponse):
 
 class GetUsersResponse(UpdateUserResponse):
     id: int
+
+class AddEkCodesRequest(BaseModel):
+    code_type: Literal["OSV", "HSV", "COMMON"] = Field(..., description="OSV | HSV | COMMON")
+    region: str = Field(example="Asia")
+    codes:list[str]= Field(example="Asia_00000001111")
+
+class AddEkCodeResponse(BaseModel):
+    inserted:list[str]
+    failed:list[tuple[str,str]]
+
+class LogSchema(BaseModel):
+    id: int
+    code: str
+    clearance_id: Optional[str] = None
+    user_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    tester_name: Optional[str] = None
+    action: str
+    note: Optional[str] = None
+    logged_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class LogsResponse(BaseModel):
+    total_count: int
+    logs: list[LogSchema]
+
+# class DeleteEkCodeRequest:
+#     pass

@@ -8,7 +8,9 @@ engine = create_engine(
     pool_size=10,
     max_overflow=5,
     pool_timeout=30,
+    pool_recycle=1800,
+    pool_pre_ping=True
 )
 
 # sessionmaker: use future=True to use SQLAlchemy 2.0 style sessions
-SessionLocal = sessionmaker(bind=engine, autoflush=False, future=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)

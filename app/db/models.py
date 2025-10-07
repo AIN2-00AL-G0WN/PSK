@@ -29,6 +29,8 @@ class CodeAction(str, enum.Enum):
     RESERVED = "reserved"
     RELEASED = "released"
     BLOCKED = "blocked"
+    DELETED = "deleted"
+    ADDED = "added"
 
 class CodeType(str, enum.Enum):
     OSV = "OSV"
@@ -107,7 +109,7 @@ class Log(Base):
     code = Column(CHAR(16), nullable=False, index=True)
     clearance_id = Column (Text, nullable=True)
     user_name = Column(String(320), nullable=True)
-    contact_email = Column(String(320), index=True)
+    contact_email = Column(String(320), index=True, nullable=True)
     tester_name = Column(Text, nullable=True)
     action = Column(
         SQLEnum(CodeAction, name="code_action", native_enum=True),

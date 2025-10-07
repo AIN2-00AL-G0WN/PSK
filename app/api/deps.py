@@ -5,7 +5,8 @@ from app.core.security import decode_token
 from app.db.engine import SessionLocal
 from app.db.models import User
 from sqlalchemy.orm import Session
-from typing import Generator
+from typing import Generator, Any
+from contextlib import contextmanager
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -34,6 +35,13 @@ def get_tx_db() -> Generator:
     finally:
         db.close()
 
+@contextmanager
+def session_factory() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
