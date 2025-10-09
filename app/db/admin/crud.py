@@ -3,6 +3,7 @@ import uuid
 import  time
 from sqlalchemy.exc import IntegrityError
 from typing import Iterable, Dict, List, Tuple
+from sqlalchemy import false,or_
 from datetime import datetime
 from http import HTTPStatus
 from sqlalchemy.orm import Session
@@ -14,7 +15,7 @@ from sqlalchemy import desc, func
 from datetime import datetime
 from sqlalchemy import  update
 from sqlalchemy.orm import Session
-from app.db.models import Code, Log, User, CodeStatus, CodeAction, CodeType
+from app.db.models import Code, Log, User, CodeStatus, CodeAction, CodeType, Region,Country
 from typing import Optional
 
 
@@ -43,18 +44,25 @@ def create_user(db: Session,
                 password: str,
                 is_admin: bool
                 ):
+    now = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
     new_user=User(team_name=team_name,
                   user_name=user_name,
                   contact_email=contact_email,
                   password_hash=password,
-                  is_admin=is_admin
+                  is_admin=is_admin,
+                  created_at=now
                   )
     db.add(new_user)
     return new_user
 
 
-def get_users(db: Session):
-    users=db.query(User.id,User.team_name,User.user_name,User.contact_email,User.is_admin).all()
+def get_users(db: Session,user_id:int):
+    users = db.query(User.id, User.team_name, User.user_name, User.contact_email,User.is_admin).filter(
+        or_(
+            User.id == user_id,
+            User.is_admin == false()
+        )
+    ).all()
     if not users:
         raise  UserNotFound("No users found in the database")
     return users
@@ -80,11 +88,11 @@ def update_user(
         "password": password,
         "is_admin": is_admin,
     }
-
     # Apply only non-None updates
     for field, value in updates.items():
         if value is not None:
             setattr(user, field, value)
+    user.created_at = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
     return user
 
 
@@ -115,7 +123,7 @@ def bulk_add_codes(
     db: Session,
     *,
     code_type: str,
-    region: str | None,
+    country: str | None,
     codes: Iterable[str],
     user_name: str,
     contact_email: str,
@@ -132,7 +140,8 @@ def bulk_add_codes(
     """
 
     def validate_code(code: str) -> bool:
-        return len(code) == 16 and code.isalnum()
+        return True
+        # return len(code) == 16 and code.isalnum()
 
     ALLOWED_CODE_TYPES = {
         CodeType.OSV.value,
@@ -173,7 +182,7 @@ def bulk_add_codes(
             "code": code,
             "user_id": None,
             "tester_name": None,
-            "region": region,
+            "country_name": country,
             "requested_at": None,
             "released_at": None,
             "reservation_token": None,
@@ -195,19 +204,32 @@ def bulk_add_codes(
     inserted_codes = [r[0] for r in inserted_rows]
     result["inserted"] = inserted_codes
 
-    # Add logs for inserted codes — if log fails, don't block insert
+    # Fetch Country objects for the given country name (if any)
+    countries_to_add = []
+    if country:
+        countries_to_add = db.query(Country).filter(Country.name == country).all()
+
+    # Now associate countries with newly inserted codes
+    if countries_to_add:
+        # Load inserted Code ORM objects
+        inserted_code_objs = db.query(Code).filter(Code.code.in_(inserted_codes)).all()
+
+        for code_obj in inserted_code_objs:
+            for country_obj in countries_to_add:
+                code_obj.countries.append(country_obj)
+
     for code in inserted_codes:
         db.add(Log(
-                code=code,
-                clearance_id=None,
-                user_name=user_name,
-                contact_email=contact_email,
-                tester_name=None,
-                action=CodeAction.ADDED.value,
-                note=f"Code added for {code_type} / {region or 'ANY'}",
-                logged_at=now
-            ))
-
+            code=code,
+            user_id=None,
+            user_name=user_name,
+            contact_email=contact_email,
+            country_name=country,
+            tester_name=None,
+            action=CodeAction.ADDED.value,
+            note=f"Code added for {code_type} / {country or 'ANY'}",
+            logged_at=now
+        ))
 
     # Mark DB-level insert failures
     failed_insert = set(normalized) - set(inserted_codes)
@@ -298,11 +320,10 @@ def delete_code(db : Session,
     # Add log entry
     db.add(Log(
         code=code_obj.code,
-        clearance_id=None,
         user_name=user_name,
         contact_email=contact_email,
         tester_name=None,
         action=CodeAction.DELETED.value,
         note="Deleted",
-        logged_at=datetime.utcnow()  # pass datetime object, NOT string
+        logged_at=datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")  # pass datetime object, NOT string
     ))

@@ -6,7 +6,7 @@ from datetime import datetime
 
 class ReserveRequest(BaseModel):
     tester_name: str = Field(..., example="John Doe")
-    region: str = Field(None, example="Asia")
+    country: str = Field(None, example="UK")
     code_type: str = Field(None, example="OSV")
 
     class Config:
@@ -14,7 +14,7 @@ class ReserveRequest(BaseModel):
 
 
 class ReserveResponse(BaseModel):
-    code: constr(min_length=16, max_length=16)
+    code: str
     code_type: str = Field(None, example="OSV")
     reservation_token: uuid.UUID
 
@@ -22,31 +22,32 @@ class ReserveResponse(BaseModel):
         from_attributes = True
 
 
-class ConfirmRequest(BaseModel):
-    code: constr(min_length=16, max_length=16)
-    reservation_token: uuid.UUID
-    tester_gmail: EmailStr
-
-    class Config:
-        from_attributes = True
+# class ConfirmRequest(BaseModel):
+#     code: str
+#     reservation_token: uuid.UUID
+#     tester_gmail: EmailStr
+#
+#     class Config:
+#         from_attributes = True
 
 
 class CodeRow(BaseModel):
     code: str
     tester_name: Optional[str] = None
     tester_gmail: Optional[str] = None
-    region: Optional[str] = None
     requested_at: Optional[datetime] = None
     reservation_token: Optional[str] = None
     status: str
     note: Optional[str] = None
+    countries:list[str]
+    regions :list[set[str]]
 
     class Config:
         from_attributes = True
 
 
 class BatchCodes(BaseModel):
-    code: constr(min_length=16, max_length=16)
+    code: str
     clearance_id: Optional[str] = None
     note: Optional[str] = None
 
@@ -55,7 +56,7 @@ class BatchCodes(BaseModel):
 
 
 class MarkNonUsableRequest(BaseModel):
-    codes: constr(min_length=16, max_length=16)
+    codes: str
     reason: Optional[str] = None
 
     class Config:
@@ -63,8 +64,8 @@ class MarkNonUsableRequest(BaseModel):
 
 
 class MarkNonUsableResponse(BaseModel):
-    updated: constr(min_length=16, max_length=16)
-    requested: constr(min_length=16, max_length=16)
+    updated: str
+    requested: str
 
     class Config:
         from_attributes = True

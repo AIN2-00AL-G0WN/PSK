@@ -34,9 +34,9 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         users = {
-            "ADMIN": {"user_name": "admin", "email": "admin@example.com", "is_admin": True},
-            "OSV": {"user_name": "osv", "email": "osv@example.com", "is_admin": False},
-            "HSV": {"user_name": "hsv", "email": "hsv@example.com", "is_admin": False},
+            "Admin": {"user_name": "admin", "email": "admin@example.com", "is_admin": True},
+            "Trillium": {"user_name": "osv", "email": "osv@example.com", "is_admin": False},
+            "Zeus": {"user_name": "hsv", "email": "hsv@example.com", "is_admin": False},
         }
 
         for team, data in users.items():

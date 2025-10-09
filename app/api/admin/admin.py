@@ -34,14 +34,14 @@ async def get_count(
         total = sum(count.values())
         return GetCountResponse(
             total = total,
-            can_be_used = count.get("can_be_used", 0),
-            reserved = count.get("reserved", 0),
-            non_usable = count.get("non_usable", 0))
+            can_be_used = count.get("CAN_BE_USED", 0),
+            reserved = count.get("RESERVED", 0),
+            non_usable = count.get("NON_USABLE", 0))
 
     except NoCodesAvailableError:
         return json_error(404,"No codes in the database","Please provide some ek codes")
 
-@router.post("/users/create", response_model=CreateUserResponse)
+@router.post("/users/create")
 async def create_user(
                 _=Depends(admin_required),
                 req : CreateUserRequest = Depends()):
@@ -71,17 +71,18 @@ async def create_user(
 
 @router.get("/users/get-users", response_model=list[GetUsersResponse])
 async def get_users(
-                _= Depends(admin_required)):
+                _= Depends(admin_required),
+                admin = Depends(get_current_user)):
     try:
         def work():
             with session_factory() as db:
-                return crud.get_users(db = db)
+                return crud.get_users(db = db,user_id=admin.id)
         users= await run_in_threadpool(work)
         result = []
         for user in users:
             result.append({
                 "id": user.id,
-                "team_name": user.team_name.value,
+                "team_name": user.team_name,
                 "user_name": user.user_name,
                 "contact_email": user.contact_email,
                 "is_admin": user.is_admin,
@@ -126,24 +127,24 @@ async def delete_user(
         _=Depends(admin_required),
         req: DeleteUserRequest =Depends()
 ):
-    try:
-        def work():
-            with session_factory() as db:
-                try:
-                    crud.delete_user(db = db,user_id = req.id)
-                    db.commit()
-                except Exception as e:
-                    db.rollback()
-                    raise e
+    # try:
+    def work():
+        with session_factory() as db:
+            try:
+                crud.delete_user(db = db,user_id = req.id)
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                raise e
 
-        await run_in_threadpool(work)
-        return   {"message": "User deleted successfully"}
-    except UserNotFound:
-        return json_error(404,"User not found","Unable to locate the user in the database")
-    except UserHasReservedCodesError as e:
-        return json_error(401, f"{status.HTTP_401_UNAUTHORIZED}", e.message)
-    except:
-        return json_error(500,"Something went wrong","Unable to delete the user from the database")
+    await run_in_threadpool(work)
+    return   {"message": "User deleted successfully"}
+    # except UserNotFound:
+    #     return json_error(404,"User not found","Unable to locate the user in the database")
+    # except UserHasReservedCodesError as e:
+    #     return json_error(401, f"{status.HTTP_401_UNAUTHORIZED}", e.message)
+    # except:
+    #     return json_error(500,"Something went wrong","Unable to delete the user from the database")
 
 
 @router.post("/codes/add")
@@ -159,7 +160,7 @@ async def add_ek_code(
                     result = crud.bulk_add_codes(
                         db=db,
                         code_type=req.code_type,
-                        region=req.region,
+                        country=req.country,
                         codes=req.codes,
                         contact_email = current_user.contact_email,
                         user_name = current_user.user_name,
