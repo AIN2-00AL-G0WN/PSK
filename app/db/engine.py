@@ -12,5 +12,5 @@ engine = create_engine(
     pool_pre_ping=True
 )
 
-# sessionmaker: use future=True to use SQLAlchemy 2.0 style sessions
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True, expire_on_commit=False)

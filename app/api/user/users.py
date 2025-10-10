@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.schemas.users.users import ReserveRequest, ReserveResponse, BatchCodes, MarkNonUsableRequest, MarkNonUsableResponse
 from app.db.users import crud
 from app.db.models import User
-from app.api.deps import get_db, get_tx_db, get_current_user, session_factory
+from app.api.deps import get_db, get_tx_db, user_required, session_factory
 from app.core.exceptions import (
     NoCodesAvailableError,
     json_error,
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.post("/reserve", response_model=ReserveResponse)
 async def reserve(
     req: ReserveRequest,
-    current_user = Depends(get_current_user),
+    current_user = Depends(user_required),
 ):
     # try:
     def work():
@@ -50,7 +50,7 @@ async def reserve(
 
 
 @router.get("/my", summary="List my reserved codes")
-async def list_my_codes( current_user = Depends(get_current_user)):
+async def list_my_codes( current_user = Depends(user_required)):
     # try:
     def work():
         with session_factory() as db:
@@ -86,7 +86,7 @@ async def list_my_codes( current_user = Depends(get_current_user)):
 @router.post("/release")
 async def release_code(
     payload: BatchCodes,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(user_required)
 ):
     # try:
     def work():
@@ -114,25 +114,3 @@ async def release_code(
     #     return json_error(500, "release_reserved_failed", "Failed to release reserved codes.")
 
 
-# @router.post("/mark-non-usable", response_model=MarkNonUsableResponse)
-# async def mark_non_usable_endpoint(
-#     payload: MarkNonUsableRequest,
-#     current_user: User = Depends(get_current_user),
-#     db: Session = Depends(get_tx_db),
-# ):
-#     try:
-#         updated = await run_in_threadpool( crud.mark_non_usable,
-#                                            db=db,
-#                                            user=current_user,
-#                                            code=payload.codes,
-#                                            reason=payload.reason,
-#                                            )
-#         # db.commit()
-#         return {
-#             "updated": updated,
-#             "requested": payload.codes,
-#         }
-#     except Exception:
-#         # db.rollback()
-#         # logger.exception("mark_non_usable failed")
-#         return json_error(500, "mark_non_usable_failed", "Failed to mark codes as non-usable.")

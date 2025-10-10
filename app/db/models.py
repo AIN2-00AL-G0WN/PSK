@@ -1,10 +1,6 @@
 # app/db/models.py
 from __future__ import annotations
-
 import enum
-from datetime import datetime
-from typing import List, Optional
-
 from sqlalchemy import (
     Column,
     BigInteger,
@@ -32,7 +28,7 @@ from app.db.base import Base
 class CodeStatus(str, enum.Enum):
     CAN_BE_USED = "CAN_BE_USED"
     RESERVED = "RESERVED"
-    # IN_USE = "in_use"  # keep if you ever add a confirm step later
+    # IN_USE = "in_use"
 
 
 class CodeAction(str, enum.Enum):
@@ -40,7 +36,6 @@ class CodeAction(str, enum.Enum):
     RELEASED = "RELEASED"
     DELETED = "DELETED"
     ADDED = "ADDED"
-    # If you later want to block/bounce codes again, add:
     # BLOCKED = "blocked"
 
 
@@ -102,7 +97,7 @@ class User(Base):
 
     id = Column(BigInteger, primary_key=True, index=True)
 
-    # free text team name (e.g. "Flowers", "Trill", "Zeus"), indexed for queries
+
     team_name = Column(String(100), nullable=False, index=True)
 
     user_name = Column(String(320), nullable=False)
@@ -112,7 +107,7 @@ class User(Base):
     is_admin = Column(Boolean, nullable=False, server_default="false")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
-    # codes reserved by this user
+
     codes = relationship("Code", back_populates="holder", lazy="selectin")
 
     def __repr__(self) -> str:
@@ -126,17 +121,16 @@ class User(Base):
 class Code(Base):
     __tablename__ = "codes"
 
-    # real codes can contain dashes and vary in length → use String + unique
+
     code = Column(String(64), primary_key=True, index=True, unique=True)
 
-    # who currently holds it (nullable if available)
+
     user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     holder = relationship("User", back_populates="codes")
 
     tester_name = Column(Text, nullable=True)
 
-    # optional free-text region label for UI; authoritative scope is countries (M:N)
-    # region_hint = Column(String(64), nullable=True)
+
 
     requested_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     released_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
@@ -159,7 +153,7 @@ class Code(Base):
 
     note = Column(Text, nullable=True)
 
-    # countries where this code is valid
+
     countries = relationship("Country", secondary=code_countries, lazy="selectin")
 
     __table_args__ = (
@@ -182,7 +176,7 @@ class Log(Base):
 
     code = Column(String(64), nullable=False, index=True)
 
-    # (optional) keep user_id for joins; also store human names for fast reporting
+
     user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     user_name = Column(String(320), nullable=True)
     contact_email = Column(String(320), nullable=True, index=True)
@@ -191,7 +185,7 @@ class Log(Base):
 
     action = Column(SQLEnum(CodeAction, name="code_action", native_enum=True), nullable=False, index=True)
 
-    # denormalized human-readable labels
+
     region_name = Column(String(128), nullable=True, index=True)    # e.g. "Europe"
     country_name = Column(String(128), nullable=True, index=True)   # e.g. "United Kingdom"
 

@@ -36,6 +36,9 @@ class InvalidReservationError(AppError):
 class PermissionDeniedError(AppError):
     """ raised when non-admin tries an admin-only action """
 
+class UsersOnlyError(AppError):
+    """ raised when non-user tries a user-only action"""
+
 class UserNotFound(AppError):
     """raised when user is not present in the database"""
 

@@ -58,7 +58,7 @@ def reserve_one_code(
         candidate.status = CodeStatus.RESERVED.value   # assign Enum directly
         candidate.released_at = None
 
-        db.flush()  # persist candidate updates before logging
+        db.flush()
 
         # Compute region name if possible
         region_name = None

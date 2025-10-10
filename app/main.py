@@ -68,8 +68,7 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(admin_router)
 origins = [
-    "http://192.168.0.115:8080/",  # React dev server
-    # Add prod domain here if deployed
+    "http://192.168.0.115:8080",  # React dev server
 ]
 
 app.add_middleware(

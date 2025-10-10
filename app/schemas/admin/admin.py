@@ -1,8 +1,7 @@
-from pydantic import BaseModel, EmailStr, constr, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional,Literal
-import uuid
 from datetime import datetime
-
+from app.db.models import CodeType
 
 class GetCountResponse(BaseModel):
     total: int = 0
@@ -34,14 +33,6 @@ class CreateUserResponse(BaseModel):
         orm_mode = True
 
 
-# class DeleteUserResponse(BaseModel):
-#     team_name: str = Field(..., example="HSV")
-#     user_name: str = Field(..., example="Flowers")
-#     contact_email: str = Field(..., example="user@example.com")
-#     class Config:
-#         from_attributes = True
-
-
 class DeleteUserRequest(BaseModel):
     id : int
 
@@ -64,13 +55,43 @@ class UpdateUserRequest(BaseModel):
 class UpdateUserResponse(CreateUserResponse):
     pass
 
-class GetUsersResponse(UpdateUserResponse):
+
+
+
+class CodeCountry(BaseModel):
+    name: str = Field(..., example="United States")
+
+
+class ReservedCode(BaseModel):
+    code: str = Field(..., example="NAKA-DMAA-AADA-YT01")
+    code_type: CodeType
+    countries: list[str] = Field(default_factory=list)
+
+
+class UserWithReservedCodes(BaseModel):
     id: int
+    user_name: str
+    team_name: str
+    contact_email: str
+    is_admin: bool
+    reserved_count: int
+    reserved_codes: list[ReservedCode] = Field(default_factory=list)
+
+    class Config:
+        orm_mode = True
 
 class AddEkCodesRequest(BaseModel):
     code_type: Literal["OSV", "HSV", "COMMON"] = Field(..., description="OSV | HSV | COMMON")
-    region: str = Field(example="Asia")
-    codes:list[str]= Field(example="Asia_00000001111")
+    countries: list[str] = Field(example="US,Canada")
+    codes:list[str]= Field(example="AAAA-BBBB-CCCC-DDD4")
+
+    @model_validator(mode="after")
+    def validate_countries_required(cls, values):
+        code_type = values.get('code_type')
+        countries = values.get('countries')
+        if code_type != "COMMON" and not countries:
+            raise ValueError("countries is required unless code_type is 'COMMON'")
+        return values
 
 class AddEkCodeResponse(BaseModel):
     inserted:list[str]

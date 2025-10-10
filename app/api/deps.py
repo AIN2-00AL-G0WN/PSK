@@ -7,7 +7,7 @@ from app.db.models import User
 from sqlalchemy.orm import Session
 from typing import Generator, Any
 from contextlib import contextmanager
-
+from app.core.exceptions import PermissionDeniedError,UsersOnlyError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -52,7 +52,6 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except JWTError:
         raise credentials_exception
 
-    # use Session.get for modern SQLAlchemy
     user = db.get(User, int(sub))
     if user is None:
         raise credentials_exception
@@ -60,6 +59,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 def admin_required(current_user: User = Depends(get_current_user)):
     if not current_user.is_admin:
-        from app.core.exceptions import PermissionDeniedError
         raise PermissionDeniedError()
+    return current_user
+
+def user_required(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Users only")
     return current_user

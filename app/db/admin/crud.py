@@ -1,19 +1,12 @@
 from __future__ import annotations
-import uuid
-import  time
-from sqlalchemy.exc import IntegrityError
 from typing import Iterable, Dict, List, Tuple
 from sqlalchemy import false,or_
-from datetime import datetime
-from http import HTTPStatus
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import selectinload
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import select
-from app.db.models import Code, CodeStatus, CodeType
 from app.core.exceptions import NoCodesAvailableError,UserNotFound,UserHasReservedCodesError
-from sqlalchemy import desc, func
+from sqlalchemy import  func
 from datetime import datetime
-from sqlalchemy import  update
 from sqlalchemy.orm import Session
 from app.db.models import Code, Log, User, CodeStatus, CodeAction, CodeType, Region,Country
 from typing import Optional
@@ -56,16 +49,33 @@ def create_user(db: Session,
     return new_user
 
 
-def get_users(db: Session,user_id:int):
-    users = db.query(User.id, User.team_name, User.user_name, User.contact_email,User.is_admin).filter(
-        or_(
-            User.id == user_id,
-            User.is_admin == false()
+
+def fetch_users_with_reserved_codes(
+    db: Session,
+    *,
+    only_user_id: Optional[int] = None,
+) -> List[User]:
+
+    q = (
+        db.query(User)
+        .options(
+
+            selectinload(User.codes.and_(Code.status == CodeStatus.RESERVED))
         )
-    ).all()
-    if not users:
-        raise  UserNotFound("No users found in the database")
-    return users
+    )
+
+    if only_user_id is not None:
+        q = q.filter(
+            or_(
+                User.id == only_user_id,
+                User.is_admin == false()
+            )
+        )
+    else:
+        q = q.filter(User.is_admin == false())
+
+    return q.all()
+
 
 def update_user(
         db: Session,
@@ -88,7 +98,7 @@ def update_user(
         "password": password,
         "is_admin": is_admin,
     }
-    # Apply only non-None updates
+
     for field, value in updates.items():
         if value is not None:
             setattr(user, field, value)
@@ -98,7 +108,7 @@ def update_user(
 
 
 def delete_user(db: Session, user_id: int):
-    # Get user and count reserved codes in one query
+
     result = (
         db.query(
             User,
@@ -119,76 +129,75 @@ def delete_user(db: Session, user_id: int):
         raise UserHasReservedCodesError (f"Action denied: user has reserved {reserved_count} code(s).")
     db.delete(user)
 
+
 def bulk_add_codes(
     db: Session,
     *,
     code_type: str,
-    country: str | None,
+    countries: Iterable[str] | None,   # <-- multiple countries supported
     codes: Iterable[str],
     user_name: str,
     contact_email: str,
 ) -> Dict:
     """
-    Validates, inserts codes, and logs insertions using the Log model.
+    Insert codes and associate each with zero or more countries.
     Returns:
-        {
-            "inserted": [list of inserted codes],
-            "failed": [(code, reason), ...]  # e.g. ("BADCODE123", "invalid_format")
-        }
-    Raises:
-        ValueError if no valid codes remain after filtering.
+      {
+        "inserted": [code, ...],               # actually inserted into codes table
+        "failed": [(code, reason), ...],       # validation or duplicate reasons
+        "unknown_countries": ["X", ...],       # country names not found in DB
+        "attached": {(code, country_name), ...}# associations created
+      }
+      - If a country name is unknown, code is still inserted, just no association for that name.
     """
 
     def validate_code(code: str) -> bool:
-        return True
-        # return len(code) == 16 and code.isalnum()
 
-    ALLOWED_CODE_TYPES = {
-        CodeType.OSV.value,
-        CodeType.HSV.value,
-        CodeType.COMMON.value
-    }
-    if code_type not in ALLOWED_CODE_TYPES:
-        raise ValueError(f"Invalid code_type '{code_type}'.")
+        return bool(code and code.strip())
 
-    result = {
+    allowed_types = {CodeType.OSV.value, CodeType.HSV.value, CodeType.COMMON.value}
+    if code_type not in allowed_types:
+        raise ValueError(f"Invalid code_type '{code_type}'. Allowed: {sorted(allowed_types)}")
+
+    result: Dict = {
         "inserted": [],
         "failed": [],
+        "unknown_countries": [],
+        "attached": set(),
     }
 
-    seen: set[str] = set()
-    normalized: list[str] = []
 
-    for raw in codes or []:
+    seen: set[str] = set()
+    normalized: List[str] = []
+    for raw in (codes or []):
         code = (raw or "").strip().upper()
         if not code:
             result["failed"].append((raw, "empty_or_blank"))
-        elif not validate_code(code):
+            continue
+        if not validate_code(code):
             result["failed"].append((code, "invalid_format"))
-        elif code in seen:
+            continue
+        if code in seen:
             result["failed"].append((code, "duplicate_in_batch"))
-        else:
-            seen.add(code)
-            normalized.append(code)
+            continue
+        seen.add(code)
+        normalized.append(code)
 
     if not normalized:
         raise ValueError("No valid codes to insert.")
 
-    now = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
 
-    # Prepare insert rows
     rows = [
         {
             "code": code,
             "user_id": None,
             "tester_name": None,
-            "country_name": country,
             "requested_at": None,
             "released_at": None,
             "reservation_token": None,
-            "status": CodeStatus.CAN_BE_USED.value,
+            "status": CodeStatus.CAN_BE_USED,
             "note": None,
-            "code_type": code_type,
+            "code_type": CodeType(code_type),
         }
         for code in normalized
     ]
@@ -199,47 +208,52 @@ def bulk_add_codes(
         .on_conflict_do_nothing(index_elements=[Code.code])
         .returning(Code.code)
     )
-
     inserted_rows = db.execute(stmt).fetchall()
     inserted_codes = [r[0] for r in inserted_rows]
     result["inserted"] = inserted_codes
 
-    # Fetch Country objects for the given country name (if any)
-    countries_to_add = []
-    if country:
-        countries_to_add = db.query(Country).filter(Country.name == country).all()
 
-    # Now associate countries with newly inserted codes
-    if countries_to_add:
-        # Load inserted Code ORM objects
-        inserted_code_objs = db.query(Code).filter(Code.code.in_(inserted_codes)).all()
+    failed_insert = set(normalized) - set(inserted_codes)
+    for code in failed_insert:
+        result["failed"].append((code, "duplicate_in_db"))
 
-        for code_obj in inserted_code_objs:
-            for country_obj in countries_to_add:
-                code_obj.countries.append(country_obj)
 
+    country_name_list = [c.strip() for c in (countries or []) if c and c.strip()]
+    country_map: dict[str, Country] = {}
+    if country_name_list:
+        found = db.query(Country).filter(Country.name.in_(country_name_list)).all()
+        country_map = {c.name: c for c in found}
+        unknown = sorted(set(country_name_list) - set(country_map.keys()))
+        result["unknown_countries"].extend(unknown)
+
+    if inserted_codes and country_map:
+        code_objs = db.query(Code).filter(Code.code.in_(inserted_codes)).all()
+        for code_obj in code_objs:
+
+            existing = {c.id for c in code_obj.countries}
+            for name, country_obj in country_map.items():
+                if country_obj.id not in existing:
+                    code_obj.countries.append(country_obj)
+                    result["attached"].add((code_obj.code, name))
+
+
+    now = datetime.utcnow()
     for code in inserted_codes:
         db.add(Log(
             code=code,
             user_id=None,
             user_name=user_name,
             contact_email=contact_email,
-            country_name=country,
             tester_name=None,
-            action=CodeAction.ADDED.value,
-            note=f"Code added for {code_type} / {country or 'ANY'}",
-            logged_at=now
+            action=CodeAction.ADDED,   # pass Enum
+            note=f"Code added for {code_type} / {', '.join(country_map.keys()) or 'ANY'}",
+            logged_at=now,
         ))
-
-    # Mark DB-level insert failures
-    failed_insert = set(normalized) - set(inserted_codes)
-    for code in failed_insert:
-        result["failed"].append((code, "duplicate_in_db"))
 
     return result
 
 def get_codes_grouped(db: Session):
-    # Single query: fetch only codes in reserved or can_be_used
+
     stmt = (
         select(Code)
         .where(Code.status.in_([CodeStatus.RESERVED.value, CodeStatus.CAN_BE_USED.value]))
@@ -266,7 +280,7 @@ def get_logs_filtered(
     offset: int = 0,
     limit: int = 20,
 ) -> Tuple[int, List[Log]]:
-    # Set default dates if needed
+
     if start_date is None or end_date is None:
         min_date, max_date = get_log_date_bounds(db)
         if start_date is None:
@@ -314,10 +328,10 @@ def delete_code(db : Session,
     if not code_obj:
         raise NoCodesAvailableError("Code not found or cannot be deleted")
 
-    # Delete code
+
     db.delete(code_obj)
 
-    # Add log entry
+
     db.add(Log(
         code=code_obj.code,
         user_name=user_name,

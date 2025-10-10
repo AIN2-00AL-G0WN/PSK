@@ -1,17 +1,13 @@
 import logging
-from typing import Callable
-from wsgiref.util import request_uri
+from typing import  Any
 from datetime import datetime
 from typing import Optional
 from fastapi.concurrency import run_in_threadpool
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy import Enum
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session
-from app.db.models import User
 from fastapi import  status
 from app.api.deps import session_factory,admin_required,get_current_user
-from app.schemas.admin.admin import GetCountResponse,CreateUserResponse,CreateUserRequest,UpdateUserRequest,UpdateUserResponse,DeleteUserRequest,GetUsersResponse,AddEkCodesRequest,AddEkCodeResponse,LogsResponse,LogSchema
+from app.schemas.admin.admin import GetCountResponse,CreateUserResponse,CreateUserRequest,UpdateUserRequest,UpdateUserResponse,DeleteUserRequest,UserWithReservedCodes,AddEkCodesRequest,AddEkCodeResponse,LogsResponse,LogSchema
 from app.db.admin import crud
 from app.core.exceptions import NoCodesAvailableError, json_error,UserHasReservedCodesError,UserNotFound
 from app.core.security import get_password_hash
@@ -69,24 +65,42 @@ async def create_user(
         return json_error(500,f"{status.HTTP_500_INTERNAL_SERVER_ERROR}","Something went wrong")
 
 
-@router.get("/users/get-users", response_model=list[GetUsersResponse])
-async def get_users(
+@router.get("/users/get-users", response_model=list[UserWithReservedCodes])
+async def get_users_with_code(
                 _= Depends(admin_required),
                 admin = Depends(get_current_user)):
     try:
         def work():
             with session_factory() as db:
-                return crud.get_users(db = db,user_id=admin.id)
-        users= await run_in_threadpool(work)
-        result = []
-        for user in users:
-            result.append({
-                "id": user.id,
-                "team_name": user.team_name,
-                "user_name": user.user_name,
-                "contact_email": user.contact_email,
-                "is_admin": user.is_admin,
-            })
+                users = crud.fetch_users_with_reserved_codes(db = db,only_user_id=admin.id)
+                if not users:
+                    raise UserNotFound("No users found in the database")
+                result: list[dict[str, Any]] = []
+                for u in users:
+                    reserved_codes = []
+                    for c in u.codes:
+                        if getattr(c, "status", None) == CodeStatus.RESERVED:
+                            reserved_codes.append({
+                                "code": c.code,
+                                "code_type": c.code_type.value if hasattr(c.code_type, "value") else c.code_type,
+                                "countries": [co.name for co in c.countries],  # list[str]
+                            })
+
+                    result.append({
+                        "id": u.id,
+                        "user_name": u.user_name,
+                        "team_name": u.team_name,
+                        "contact_email": u.contact_email,
+                        "is_admin": u.is_admin,
+                        "reserved_count": len(reserved_codes),
+                        "reserved_codes": reserved_codes,
+                    })
+
+                return result
+
+
+
+        result = await run_in_threadpool(work)
         return result
     except UserNotFound as e:
         return json_error(404, f"{status.HTTP_404_NOT_FOUND}", e.message)
@@ -127,24 +141,24 @@ async def delete_user(
         _=Depends(admin_required),
         req: DeleteUserRequest =Depends()
 ):
-    # try:
-    def work():
-        with session_factory() as db:
-            try:
-                crud.delete_user(db = db,user_id = req.id)
-                db.commit()
-            except Exception as e:
-                db.rollback()
-                raise e
+    try:
+        def work():
+            with session_factory() as db:
+                try:
+                    crud.delete_user(db = db,user_id = req.id)
+                    db.commit()
+                except Exception as e:
+                    db.rollback()
+                    raise e
 
-    await run_in_threadpool(work)
-    return   {"message": "User deleted successfully"}
-    # except UserNotFound:
-    #     return json_error(404,"User not found","Unable to locate the user in the database")
-    # except UserHasReservedCodesError as e:
-    #     return json_error(401, f"{status.HTTP_401_UNAUTHORIZED}", e.message)
-    # except:
-    #     return json_error(500,"Something went wrong","Unable to delete the user from the database")
+        await run_in_threadpool(work)
+        return   {"message": "User deleted successfully"}
+    except UserNotFound:
+        return json_error(404,"User not found","Unable to locate the user in the database")
+    except UserHasReservedCodesError as e:
+        return json_error(401, f"{status.HTTP_401_UNAUTHORIZED}", e.message)
+    except:
+        return json_error(500,"Something went wrong","Unable to delete the user from the database")
 
 
 @router.post("/codes/add")
@@ -160,7 +174,7 @@ async def add_ek_code(
                     result = crud.bulk_add_codes(
                         db=db,
                         code_type=req.code_type,
-                        country=req.country,
+                        countries =req.countries,
                         codes=req.codes,
                         contact_email = current_user.contact_email,
                         user_name = current_user.user_name,
