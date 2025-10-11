@@ -1,15 +1,17 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, computed_field
 from typing import Optional,Literal
 from datetime import datetime
 from app.db.models import CodeType
+from app.core.exceptions import CodeBulkAddError
 
 class GetCountResponse(BaseModel):
     total: int = 0
     can_be_used: int = 0
     reserved: int = 0
     non_usable: int = 0
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreateUserRequest(BaseModel):
@@ -20,7 +22,7 @@ class CreateUserRequest(BaseModel):
     is_admin : bool = Field(... , example=False)
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreateUserResponse(BaseModel):
@@ -30,14 +32,14 @@ class CreateUserResponse(BaseModel):
     is_admin : bool = Field(... , example=False)
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DeleteUserRequest(BaseModel):
     id : int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UpdateUserRequest(BaseModel):
@@ -49,23 +51,25 @@ class UpdateUserRequest(BaseModel):
     is_admin: Optional[bool] = Field(None, example=False)
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UpdateUserResponse(CreateUserResponse):
     pass
 
 
-
-
 class CodeCountry(BaseModel):
     name: str = Field(..., example="United States")
+    class Config:
+        from_attributes = True
 
 
 class ReservedCode(BaseModel):
     code: str = Field(..., example="NAKA-DMAA-AADA-YT01")
     code_type: CodeType
     countries: list[str] = Field(default_factory=list)
+    class Config:
+        from_attributes = True
 
 
 class UserWithReservedCodes(BaseModel):
@@ -78,7 +82,7 @@ class UserWithReservedCodes(BaseModel):
     reserved_codes: list[ReservedCode] = Field(default_factory=list)
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class AddEkCodesRequest(BaseModel):
     code_type: Literal["OSV", "HSV", "COMMON"] = Field(..., description="OSV | HSV | COMMON")
@@ -90,12 +94,17 @@ class AddEkCodesRequest(BaseModel):
         code_type = values.code_type
         countries = values.countries
         if code_type != "COMMON" and not countries:
-            raise ValueError("countries is required unless code_type is 'COMMON'")
+            raise CodeBulkAddError("countries is required unless code_type is 'COMMON'")
         return values
+
+    class Config:
+        from_attributes = True
 
 class AddEkCodeResponse(BaseModel):
     inserted:list[str]
     failed:list[tuple[str,str]]
+    class Config:
+        from_attributes = True
 
 class LogSchema(BaseModel):
     id: int
@@ -108,12 +117,19 @@ class LogSchema(BaseModel):
     note: Optional[str] = None
     logged_at: datetime
 
+    @computed_field(return_type=str)
+    @property
+    def logged_at_str(self):
+        return self.logged_at.strftime("%d-%m-%Y %I:%M:%S %p")
+
     class Config:
         from_attributes = True
 
 class LogsResponse(BaseModel):
     total_count: int
     logs: list[LogSchema]
+    class Config:
+        from_attributes = True
 
 class GetAllCountriesResponse(BaseModel):
     id:int

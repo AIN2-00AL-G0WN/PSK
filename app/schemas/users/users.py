@@ -1,5 +1,4 @@
-# app/schemas/users.py
-from pydantic import BaseModel, EmailStr, constr, Field
+from pydantic import BaseModel, EmailStr, constr, Field, computed_field
 from typing import Optional
 import uuid
 from datetime import datetime
@@ -21,16 +20,6 @@ class ReserveResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-# class ConfirmRequest(BaseModel):
-#     code: str
-#     reservation_token: uuid.UUID
-#     tester_gmail: EmailStr
-#
-#     class Config:
-#         from_attributes = True
-
-
 class CodeRow(BaseModel):
     code: str
     tester_name: Optional[str] = None
@@ -42,6 +31,12 @@ class CodeRow(BaseModel):
     countries:list[str]
     regions :list[set[str]]
 
+    @computed_field(return_type=str)
+    @property
+    def requested_at_str(self):
+        if self.requested_at is None:
+            return None
+        return self.requested_at.strftime("%d-%m-%Y %I:%M:%S %p")
     class Config:
         from_attributes = True
 
@@ -87,6 +82,10 @@ class LogSchema(BaseModel):
     note: Optional[str] = None
     logged_at: datetime
 
+    @computed_field(return_type=str)
+    @property
+    def logged_at_str(self):
+        return self.logged_at.strftime("%d-%m-%Y %I:%M:%S %p")
     class Config:
         from_attributes = True
 
@@ -98,3 +97,13 @@ class GetAllCountriesResponse(BaseModel):
     country:str
     class Config:
         from_attributes = True
+
+
+
+# class ConfirmRequest(BaseModel):
+#     code: str
+#     reservation_token: uuid.UUID
+#     tester_gmail: EmailStr
+#
+#     class Config:
+#         from_attributes = True

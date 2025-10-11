@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends
 from app.schemas.users.users import (ReserveRequest,
                                      ReserveResponse,
                                      BatchCodes,
+                                     LogsResponse,
+                                     LogSchema,
                                      MarkNonUsableRequest,
                                      MarkNonUsableResponse,
                                      GetAllCountriesResponse)
@@ -117,13 +119,15 @@ async def release_code(
         return json_error(500, "release_reserved_failed", "Failed to release reserved codes.")
 
 
-@router.get("/logs")
-async def get_user_logs(_=Depends(user_required),):
+@router.get("/logs", response_model=LogsResponse)
+async def get_user_logs(user: User =Depends(user_required),):
     try:
         def work():
             with session_factory() as db:
-                return crud.get_all_countries(db)
-        return await run_in_threadpool(work)
+                return crud.user_logs(db=db,user_id=user.id)
+        logs = await run_in_threadpool(work)
+        logs_response = [LogSchema.from_orm(log) for log in logs]
+        return LogsResponse(logs=logs_response)
     except Exception as e:
         raise e
 

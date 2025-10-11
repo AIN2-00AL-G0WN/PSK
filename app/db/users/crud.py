@@ -1,4 +1,6 @@
 import uuid
+from zoneinfo import ZoneInfo
+
 from app.core.exceptions import NoCodesAvailableError
 from sqlalchemy import desc, select
 from datetime import datetime
@@ -54,7 +56,7 @@ def reserve_one_code(
         if not candidate:
             return None
 
-        now = datetime.utcnow()
+        now = now = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")
 
         # Update fields
         candidate.user_id = user_id
@@ -122,7 +124,7 @@ def release_reserved_code(
     note: Optional[str] = None,
 ) -> str:
 
-    now = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
+    now = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")
 
     # Step 1: Update the reserved code
     stmt = (
@@ -164,7 +166,7 @@ def release_reserved_code(
         user_name=user.user_name,
         contact_email=user.contact_email,
         logged_at=now,
-        note=clearance_id,
+        note=clearance_id if clearance_id  else note,
         region_name=region_name,
         country_name=country_name,
     )

@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Iterable, Dict, List, Tuple
 from sqlalchemy import false,or_
 from sqlalchemy.orm import selectinload
+from zoneinfo import ZoneInfo
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import select
 from app.core.exceptions import (NoCodesAvailableError,
@@ -39,7 +40,7 @@ def create_user(db: Session,
                 password: str,
                 is_admin: bool
                 ):
-    now = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
+    now = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")
     new_user=User(team_name=team_name,
                   user_name=user_name,
                   contact_email=contact_email,
@@ -104,7 +105,7 @@ def update_user(
     for field, value in updates.items():
         if value is not None:
             setattr(user, field, value)
-    user.created_at = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
+    user.created_at = now = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")
     return user
 
 
@@ -239,7 +240,7 @@ def bulk_add_codes(
                     result["attached"].add((code_obj.code, name))
 
 
-    now = datetime.utcnow()
+    now = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")
     for code in inserted_codes:
         db.add(Log(
             code=code,
@@ -344,7 +345,7 @@ def delete_code(db : Session,
         tester_name=None,
         action=CodeAction.DELETED.value,
         note="Deleted",
-        logged_at=datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")  # pass datetime object, NOT string
+        logged_at=datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")  # pass datetime object, NOT string
     ))
 
 def get_all_countries(db: Session):

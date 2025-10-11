@@ -12,6 +12,7 @@ from app.api.auth.auth import router as auth_router
 from app.api.user.users import router as users_router
 from app.api.admin.admin import router as admin_router
 from app.core.exceptions import (AppError,
+                                 CodeBulkAddError,
                                  NoCodesAvailableError,
                                  ReservationExpiredError,
                                  InvalidReservationError,
@@ -130,4 +131,15 @@ async def user_only_handler(request: Request, exc: UsersOnlyError):
 async def app_error_handler(request: Request, exc: AppError):
     return JSONResponse(status_code=400, content={"detail": exc.message or "Application error"})
 
-# Dev startup: create tables and default admin,osv,hsv users (DEV ONLY)
+@app.exception_handler(CodeBulkAddError)
+async def code_bulk_add_handler(request: Request, exc: CodeBulkAddError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": (
+                "Invalid request format or missing required fields. "
+                "The 'countries' field is required unless the code type is 'COMMON'. "
+                "Please review your input and try again."
+            )
+        }
+    )
