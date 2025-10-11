@@ -34,7 +34,6 @@ def reserve_one_code(
     ) -> Code | None:
         # Normalize to Enum
         ct = CodeType(code_type) if isinstance(code_type, str) else code_type
-        print (ct)
         # Start with status + code_type filter
         query = (
             db.query(Code)
@@ -185,7 +184,6 @@ def list_of_codes(db: Session, user):
         .order_by(Code.requested_at.desc())
         .all()
     )
-    print(codes)
     return codes
 
 

@@ -279,6 +279,7 @@ def get_logs_filtered(
     end_date: Optional[datetime] = None,
     code: Optional[str] = None,
     user_name: Optional[str] = None,
+    action: Optional[CodeAction] = None,
     offset: int = 0,
     limit: int = 20,
 ) -> Tuple[int, List[Log]]:
@@ -302,6 +303,8 @@ def get_logs_filtered(
         filters.append(Log.code == code)
     if user_name:
         filters.append(Log.user_name == user_name)
+    if action:
+        filters.append(Log.action == action.value)
 
     query = db.query(Log).filter(*filters)
 

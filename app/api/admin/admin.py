@@ -27,7 +27,7 @@ from app.core.exceptions import (NoCodesAvailableError,
                                  UserHasReservedCodesError,
                                  UserNotFound)
 from app.core.security import get_password_hash
-from app.db.models import CodeStatus, CodeType
+from app.db.models import CodeStatus, CodeType, CodeAction
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -276,6 +276,7 @@ async def get_logs(
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Items per page"),
     code: Optional[str] = Query(None, description="Filter by code"),
     user_name: Optional[str] = Query(None, description="Filter by user name"),
+    action: Optional[CodeAction] = Query(None, description="Filter by code action"),
     start_date: Optional[str] = Query(None, description="Start date in ISO format (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date in ISO format (YYYY-MM-DD)"),
 ):
@@ -298,6 +299,7 @@ async def get_logs(
                 user_name=user_name,
                 start_date=start_dt,
                 end_date=end_dt,
+                action=action,
                 offset=offset,
                 limit=page_size,
             )
