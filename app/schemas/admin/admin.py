@@ -87,8 +87,8 @@ class AddEkCodesRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_countries_required(cls, values):
-        code_type = values.get('code_type')
-        countries = values.get('countries')
+        code_type = values.code_type
+        countries = values.countries
         if code_type != "COMMON" and not countries:
             raise ValueError("countries is required unless code_type is 'COMMON'")
         return values

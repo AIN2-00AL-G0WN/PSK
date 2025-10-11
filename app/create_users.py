@@ -3,7 +3,7 @@ import httpx
 import random
 import string
 
-BASE_URL = "http://localhost:8000"  # Adjust as needed
+BASE_URL = "http://localhost:8000"
 
 teams = ["OSV", "HSV"]
 PASSWORD = "Rdl@12345"

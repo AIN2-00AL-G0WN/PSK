@@ -1,10 +1,17 @@
 import uuid
 from app.core.exceptions import NoCodesAvailableError
-from sqlalchemy import desc
+from sqlalchemy import desc, select
 from datetime import datetime
 from sqlalchemy import  update
 from sqlalchemy.orm import Session
-from app.db.models import Code, Log, User, CodeStatus, CodeAction, CodeType, Region,Country
+from app.db.models import (Code,
+                           Log,
+                           User,
+                           CodeStatus,
+                           CodeAction,
+                           CodeType,
+                           Region,
+                           Country)
 from typing import Optional
 from sqlalchemy.orm import joinedload
 
@@ -129,7 +136,7 @@ def release_reserved_code(
             reservation_token=None,
             requested_at=None,
             released_at=now,
-            note=None,
+            note=note,
         )
         .returning(Code.code)
     )
@@ -182,8 +189,15 @@ def list_of_codes(db: Session, user):
     return codes
 
 
-
-
+def user_logs(db: Session, user_id: int):
+    stmt = (
+        select(Log)
+        .where(Log.user_id == user_id)
+        .order_by(Log.logged_at.desc())
+        .limit(20)
+    )
+    result = db.execute(stmt).scalars().all()
+    return result
 
 #
 # def mark_non_usable(

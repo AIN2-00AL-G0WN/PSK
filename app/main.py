@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import logging
-
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text as sa_text
@@ -12,7 +11,13 @@ from app.db.engine import engine, SessionLocal
 from app.api.auth.auth import router as auth_router
 from app.api.user.users import router as users_router
 from app.api.admin.admin import router as admin_router
-from app.core.exceptions import AppError, NoCodesAvailableError, ReservationExpiredError, InvalidReservationError, PermissionDeniedError
+from app.core.exceptions import (AppError,
+                                 NoCodesAvailableError,
+                                 ReservationExpiredError,
+                                 InvalidReservationError,
+                                 PermissionDeniedError,
+                                 UsersOnlyError,
+                                 )
 from app.db.models import User
 from app.core.security import get_password_hash
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,7 +73,8 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(admin_router)
 origins = [
-    "http://192.168.0.115:8080",  # React dev server
+    "http://192.168.0.101:5173",
+    "http://192.168.0.101:8000"
 ]
 
 app.add_middleware(
@@ -94,6 +100,12 @@ $$;
         conn.execute(sa_text(ddl))
         conn.commit()
 # Map domain exceptions to HTTP
+
+@app.exception_handler(AppError)
+async def no_codes_handler(request: Request, exc: AppError):
+    logger.exception()
+    return JSONResponse(status_code=500, content={"detail": "Something went wrong"})
+
 @app.exception_handler(NoCodesAvailableError)
 async def no_codes_handler(request: Request, exc: NoCodesAvailableError):
     return JSONResponse(status_code=404, content={"detail": "No codes available"})
@@ -110,7 +122,10 @@ async def invalid_reservation_handler(request: Request, exc: InvalidReservationE
 async def permission_denied_handler(request: Request, exc: PermissionDeniedError):
     return JSONResponse(status_code=403, content={"detail": "Permission denied"})
 
-# generic AppError -> 400
+@app.exception_handler(UsersOnlyError)
+async def user_only_handler(request: Request, exc: UsersOnlyError):
+    return JSONResponse(status_code=403, content={"detail": "Users only"})
+
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError):
     return JSONResponse(status_code=400, content={"detail": exc.message or "Application error"})

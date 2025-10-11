@@ -1,15 +1,30 @@
 import logging
-from typing import  Any
+from typing import Any, Coroutine
 from datetime import datetime
 from typing import Optional
 from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from fastapi import  status
+from starlette.responses import JSONResponse
+
 from app.api.deps import session_factory,admin_required,get_current_user
-from app.schemas.admin.admin import GetCountResponse,CreateUserResponse,CreateUserRequest,UpdateUserRequest,UpdateUserResponse,DeleteUserRequest,UserWithReservedCodes,AddEkCodesRequest,AddEkCodeResponse,LogsResponse,LogSchema
+from app.schemas.admin.admin import (GetCountResponse,
+                                     CreateUserResponse,
+                                     CreateUserRequest,
+                                     UpdateUserRequest,
+                                     UpdateUserResponse,
+                                     DeleteUserRequest,
+                                     UserWithReservedCodes,
+                                     AddEkCodesRequest,
+                                     AddEkCodeResponse,
+                                     LogsResponse,
+                                     LogSchema)
 from app.db.admin import crud
-from app.core.exceptions import NoCodesAvailableError, json_error,UserHasReservedCodesError,UserNotFound
+from app.core.exceptions import (NoCodesAvailableError,
+                                 json_error,
+                                 UserHasReservedCodesError,
+                                 UserNotFound)
 from app.core.security import get_password_hash
 from app.db.models import CodeStatus, CodeType
 logger = logging.getLogger(__name__)
@@ -166,7 +181,7 @@ async def add_ek_code(
     req: AddEkCodesRequest = Depends(),
     _: bool = Depends(admin_required),
     current_user = Depends(get_current_user)
-)->AddEkCodeResponse:
+)-> dict | Any:
     try:
         def work():
             with session_factory() as db:

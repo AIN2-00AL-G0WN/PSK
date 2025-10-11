@@ -4,7 +4,9 @@ from sqlalchemy import false,or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import select
-from app.core.exceptions import NoCodesAvailableError,UserNotFound,UserHasReservedCodesError
+from app.core.exceptions import (NoCodesAvailableError,
+                                 UserNotFound,
+                                 UserHasReservedCodesError)
 from sqlalchemy import  func
 from datetime import datetime
 from sqlalchemy.orm import Session
