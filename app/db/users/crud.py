@@ -199,7 +199,14 @@ def user_logs(db: Session, user_id: int):
     result = db.execute(stmt).scalars().all()
     return result
 
-#
+def get_all_countries(db: Session):
+    stmt = select(Country.id, Country.name)
+    result = db.execute(stmt).all()
+    return result
+
+
+
+
 # def mark_non_usable(
 #     db: Session,
 #     user: User,

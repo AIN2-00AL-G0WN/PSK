@@ -76,3 +76,25 @@ class ReservedCOdesLogs(BaseModel):
 
 class ReleasedCodesLogs(BaseModel):
     pass
+class LogSchema(BaseModel):
+    id: int
+    code: str
+    clearance_id: Optional[str] = None
+    user_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    tester_name: Optional[str] = None
+    action: str
+    note: Optional[str] = None
+    logged_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class LogsResponse(BaseModel):
+    logs: list[LogSchema]
+
+class GetAllCountriesResponse(BaseModel):
+    id:int
+    country:str
+    class Config:
+        from_attributes = True

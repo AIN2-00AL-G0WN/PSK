@@ -343,3 +343,8 @@ def delete_code(db : Session,
         note="Deleted",
         logged_at=datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")  # pass datetime object, NOT string
     ))
+
+def get_all_countries(db: Session):
+    stmt = select(Country.id, Country.name)
+    result = db.execute(stmt).all()
+    return result

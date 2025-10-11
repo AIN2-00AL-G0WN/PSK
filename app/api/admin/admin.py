@@ -19,6 +19,7 @@ from app.schemas.admin.admin import (GetCountResponse,
                                      AddEkCodesRequest,
                                      AddEkCodeResponse,
                                      LogsResponse,
+                                     GetAllCountriesResponse,
                                      LogSchema)
 from app.db.admin import crud
 from app.core.exceptions import (NoCodesAvailableError,
@@ -214,7 +215,7 @@ async def add_ek_code(
         return json_error(500, "unexpected_error", "Unexpected server error.")
 
 
-@router.get("codes/all")
+@router.get("/codes/all")
 async def get_all_codes(_=Depends(admin_required)):
     try:
 
@@ -270,6 +271,7 @@ async def delete_code(
 
 @router.get("/logs", response_model=LogsResponse)
 async def get_logs(
+    _=Depends(admin_required),
     page: int = Query(1, ge=1, description="Page number starting from 1"),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Items per page"),
     code: Optional[str] = Query(None, description="Filter by code"),
@@ -311,3 +313,17 @@ async def get_logs(
     except Exception:
         logger.exception("get_logs_unexpected_error")
         return json_error(500, "unexpected_error", "Unexpected server error.")
+
+
+@router.get("/countries",response_model=list[GetAllCountriesResponse])
+async def get_all_countries(_=Depends(admin_required),):
+    try:
+        def work():
+            with session_factory() as db:
+                return crud.get_all_countries(db)
+
+        result = await run_in_threadpool(work)
+        return [{"id": row.id, "country": row.name} for row in result]
+
+    except Exception as e:
+        raise e

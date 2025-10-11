@@ -1,11 +1,15 @@
 import logging
 from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.schemas.users.users import ReserveRequest, ReserveResponse, BatchCodes, MarkNonUsableRequest, MarkNonUsableResponse
+from app.schemas.users.users import (ReserveRequest,
+                                     ReserveResponse,
+                                     BatchCodes,
+                                     MarkNonUsableRequest,
+                                     MarkNonUsableResponse,
+                                     GetAllCountriesResponse)
 from app.db.users import crud
 from app.db.models import User
-from app.api.deps import get_db, get_tx_db, user_required, session_factory
+from app.api.deps import  user_required, session_factory
 from app.core.exceptions import (
     NoCodesAvailableError,
     json_error,
@@ -113,15 +117,28 @@ async def release_code(
         return json_error(500, "release_reserved_failed", "Failed to release reserved codes.")
 
 
-
 @router.get("/logs")
-async def get_user_logs(current_user: User= Depends(user_required)):
+async def get_user_logs(_=Depends(user_required),):
     try:
         def work():
             with session_factory() as db:
-                return crud.user_logs(db,current_user.id)
-
+                return crud.get_all_countries(db)
         return await run_in_threadpool(work)
+    except Exception as e:
+        raise e
+
+
+@router.get("/countries",response_model=list[GetAllCountriesResponse])
+async def get_all_countries(_=Depends(user_required),):
+    try:
+        def work():
+            with session_factory() as db:
+                return crud.get_all_countries(db)
+
+        result = await run_in_threadpool(work)
+        return [{"id": row.id, "country": row.name} for row in result]
+
+
     except Exception as e:
         raise e
 

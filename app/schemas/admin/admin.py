@@ -115,5 +115,8 @@ class LogsResponse(BaseModel):
     total_count: int
     logs: list[LogSchema]
 
-# class DeleteEkCodeRequest:
-#     pass
+class GetAllCountriesResponse(BaseModel):
+    id:int
+    country:str
+    class Config:
+        from_attributes = True
