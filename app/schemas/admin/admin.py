@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator, computed_field
+from pydantic import BaseModel, Field, model_validator, computed_field, EmailStr
 from typing import Optional,Literal
 from datetime import datetime
 from app.db.models import CodeType
@@ -17,7 +17,7 @@ class GetCountResponse(BaseModel):
 class CreateUserRequest(BaseModel):
     team_name : str =Field(...,example="HSV")
     user_name : str =Field(... , example = "Flowers")
-    contact_email : str = Field (..., example="user@example.com")
+    contact_email : EmailStr = Field (..., example="user@example.com")
     password : str = Field(... , example="Rdl@12345")
     is_admin : bool = Field(... , example=False)
 
@@ -28,7 +28,7 @@ class CreateUserRequest(BaseModel):
 class CreateUserResponse(BaseModel):
     team_name : str =Field(...,example="HSV")
     user_name : str =Field(... , example = "Flowers")
-    contact_email : str = Field (..., example="user@example.com")
+    contact_email : EmailStr = Field (..., example="user@example.com")
     is_admin : bool = Field(... , example=False)
 
     class Config:
@@ -46,7 +46,7 @@ class UpdateUserRequest(BaseModel):
     id: int
     team_name: Optional[str] = Field(None, example="HSV")
     user_name: Optional[str] = Field(None, example="Flowers")
-    contact_email: Optional[str] = Field(None, example="user@example.com")
+    contact_email: Optional[EmailStr] = Field(None, example="user@example.com")
     password: Optional[str] = Field(None, example="Rdl@12345")
     is_admin: Optional[bool] = Field(None, example=False)
 
@@ -76,7 +76,7 @@ class UserWithReservedCodes(BaseModel):
     id: int
     user_name: str
     team_name: str
-    contact_email: str
+    contact_email: EmailStr
     is_admin: bool
     reserved_count: int
     reserved_codes: list[ReservedCode] = Field(default_factory=list)
@@ -111,7 +111,7 @@ class LogSchema(BaseModel):
     code: str
     clearance_id: Optional[str] = None
     user_name: Optional[str] = None
-    contact_email: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
     tester_name: Optional[str] = None
     action: str
     note: Optional[str] = None

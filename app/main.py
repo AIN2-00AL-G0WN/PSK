@@ -74,6 +74,7 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(admin_router)
 origins = [
+    "http://192.168.0.105:5173",
     "http://192.168.0.101:5173",
     "http://192.168.0.101:8000"
 ]

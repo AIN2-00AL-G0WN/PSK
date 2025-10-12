@@ -62,7 +62,6 @@ async def list_my_codes( current_user = Depends(user_required)):
             with session_factory() as db:
                 try:
                      codes = crud.list_of_codes(db=db, user = current_user)
-                     print(codes)
                      result = []
                      for code in codes:
                          result.append({

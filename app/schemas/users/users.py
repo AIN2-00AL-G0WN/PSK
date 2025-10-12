@@ -23,7 +23,7 @@ class ReserveResponse(BaseModel):
 class CodeRow(BaseModel):
     code: str
     tester_name: Optional[str] = None
-    tester_gmail: Optional[str] = None
+    tester_gmail: Optional[EmailStr] = None
     requested_at: Optional[datetime] = None
     reservation_token: Optional[str] = None
     status: str
@@ -76,7 +76,7 @@ class LogSchema(BaseModel):
     code: str
     clearance_id: Optional[str] = None
     user_name: Optional[str] = None
-    contact_email: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
     tester_name: Optional[str] = None
     action: str
     note: Optional[str] = None
