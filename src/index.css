@@ -1,0 +1,15 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap");
+
+@import "tailwindcss";
+
+
+@layer base {
+  body {
+    @apply bg-white text-gray-900 font-sans min-h-screen flex items-center justify-center;
+  }
+
+  #root {
+    @apply w-full max-w-7xl mx-auto px-4;
+  }
+}
+
