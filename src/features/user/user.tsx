@@ -150,7 +150,7 @@ export default function UserPage() {
             const data = await apiRequest("/users/logs", undefined, "GET");
             setHistory(Array.isArray(data) ? data : data.logs || []);
         } catch (err) {
-            toast({ title: "Failed to fetch logs", description: err.message,className: "bg-black text-white",duration:2000 });
+            toast({ title: "Failed to fetch logs", description: err.message ,duration:2000 });
         }
     }, [toast]);
 
@@ -159,7 +159,7 @@ export default function UserPage() {
             const data = await apiRequest("/users/my", undefined, "GET");
             setReserved(Array.isArray(data) ? data : []);
         } catch (err) {
-            toast({ title: "Failed to fetch reserved codes", description: err.message,className: "bg-black text-white",duration:2000 });
+            toast({ title: "Failed to fetch reserved codes", description: err.message,duration:2000 });
         }
     }, [toast]);
 
@@ -174,39 +174,39 @@ export default function UserPage() {
             setGeneratedCode(data.code);
             setDialogOpen(true);
             await copyToClipboard(data.code);
-            toast({ title: "Copied to clipboard", description: data.code,duration:2000,className: "bg-black text-white", });
+            toast({ title: "Copied to clipboard", description: data.code,duration:2000 });
             fetchLogs();
             fetchReserved();
         } catch (err) {
-            toast({ title: "No EK-codes available", description: "No EK-codes available right now.",duration:2000,className: "bg-black text-white", });
+            toast({ title: "No EK-codes available", description: "No EK-codes available right now.",duration:2000 });
         }
     }, [teamMember, country, region, selectedType]);
 
     const handleSubmitBack = useCallback(async () => {
-        if (!submitCode) return toast({ title: "Enter a code",duration:2000,className: "bg-black text-white", });
+        if (!submitCode) return toast({ title: "Enter a code",duration:2000 });
         try {
             await apiRequest("/users/release", { code: submitCode, note: submitComments || undefined });
-            toast({ title: "Code submitted back",duration:2000,className: "bg-black text-white", });
+            toast({ title: "Code submitted back",duration:2000 });
             setSubmitCode(""); setSubmitComments("");
             fetchLogs(); fetchReserved();
-        } catch (err) { toast({ title: "Submit failed", description: err.message,duration:2000,className: "bg-black text-white", }); }
+        } catch (err) { toast({ title: "Submit failed", description: err.message,duration:2000 }); }
     }, [submitCode, submitComments]);
 
     const handleClear = useCallback(async () => {
-        if (!confirmCode || !clearanceId) return toast({ title: "Enter code and clearance ID",duration:2000,className: "bg-black text-white", });
+        if (!confirmCode || !clearanceId) return toast({ title: "Enter code and clearance ID",duration:2000 });
         try {
             await apiRequest("/users/release", { code: confirmCode, clearance_id: clearanceId });
-            toast({ title: "Code cleared",duration:2000,className: "bg-black text-white", });
+            toast({ title: "Code cleared",duration:2000 });
             setConfirmCode(""); setClearanceId("");
             fetchLogs(); fetchReserved();
-        } catch (err) { toast({ title: "Clear failed", description: err.message,duration:2000,className: "bg-black text-white", }); }
+        } catch (err) { toast({ title: "Clear failed", description: err.message,duration:2000 }); }
     }, [confirmCode, clearanceId]);
 
     const onLogout = async () => {
         try {
             await fetch(`${API_BASE}/auth/logout`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${JSON.parse(localStorage.getItem("user") || "{}").token}` } });
             localStorage.clear(); window.location.href = "/";
-        } catch (err) { toast({ title: "Logout failed", description: "Logout Failed,Contact Admin",duration:2000,className: "bg-black text-white", }); }
+        } catch (err) { toast({ title: "Logout failed", description: "Logout Failed,Contact Admin",duration:2000 }); }
     };
 
     const filteredHistory = history.filter(h =>
@@ -242,7 +242,7 @@ export default function UserPage() {
                                 {generatedCode}
                             </div>
                             <div className="mt-6 flex gap-3 justify-center">
-                                <Button onClick={async () => { await copyToClipboard(generatedCode); setDialogOpen(false); toast({ title: "Copied",duration:2000,className: "bg-black text-white", }); }}>
+                                <Button onClick={async () => { await copyToClipboard(generatedCode); setDialogOpen(false); toast({ title: "Copied",duration:2000 }); }}>
                                     Copy & Close
                                 </Button>
                                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Close</Button>
