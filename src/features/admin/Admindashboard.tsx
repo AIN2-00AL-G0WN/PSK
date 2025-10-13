@@ -264,10 +264,17 @@ export default function AdminDashboard() {
             setUsers((prev) => prev.filter((u) => u.id !== userId));
         } catch (err: any) {
             let msg = "Action failed";
+
+            // Try to read the backend message directly
             if (err.message) {
-                const parts = err.message.split(":");
-                msg = parts.length > 1 ? parts.slice(1).join(":").trim() : parts[0];
+                try {
+                    const parsed = JSON.parse(err.message);
+                    msg = parsed.message || msg;
+                } catch {
+                    msg = err.message;
+                }
             }
+
             toast({
                 title: "Action Failed",
                 description: msg,
@@ -276,6 +283,7 @@ export default function AdminDashboard() {
         }
     }
 
+    
     // ----------------- fetch countries -----------------
     useEffect(() => {
         const fetchCountries = async () => {
@@ -596,7 +604,7 @@ export default function AdminDashboard() {
 
                                         <TableBody>
                                             {filteredUsers.length ? (
-                                                filteredUsers.map((u , index) => (
+                                                filteredUsers.map((u, index) => (
                                                     <TableRow key={`${u.id || u.contact_email}_${index}`}>
                                                         <TableCell>{u.team_name}</TableCell>
                                                         <TableCell>{u.contact_email}</TableCell>
@@ -827,8 +835,8 @@ export default function AdminDashboard() {
                                                                     ))
                                                             ) : (
                                                                 <span className="text-xs text-muted-foreground">
-                                  No available codes
-                                </span>
+                                                                    No available codes
+                                                                </span>
                                                             )}
                                                         </div>
 
@@ -852,8 +860,8 @@ export default function AdminDashboard() {
                                                                     ))
                                                             ) : (
                                                                 <span className="text-xs text-muted-foreground">
-                                  No used codes
-                                </span>
+                                                                    No used codes
+                                                                </span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -877,115 +885,115 @@ export default function AdminDashboard() {
                                 <div className="rounded-lg border overflow-hidden">
                                     <table className="w-full text-sm">
                                         <thead>
-                                        <tr className="text-left border-b bg-[#e2e8f0] text-base font-semibold ">
-                                            {/* <tr className="text-left border-b bg-slate-100"> */}
-                                            <th className="py-2 px-2">
-                                                Date
-                                                <div className="flex gap-1 mt-1">
+                                            <tr className="text-left border-b bg-[#e2e8f0] text-base font-semibold ">
+                                                {/* <tr className="text-left border-b bg-slate-100"> */}
+                                                <th className="py-2 px-2">
+                                                    Date
+                                                    <div className="flex gap-1 mt-1">
+                                                        <Input
+                                                            type="date"
+                                                            value={filters.start_date}
+                                                            onChange={(e) =>
+                                                                setFilters({ ...filters, start_date: e.target.value })
+                                                            }
+                                                            className="h-8"
+                                                        />
+                                                        <Input
+                                                            type="date"
+                                                            value={filters.end_date}
+                                                            onChange={(e) =>
+                                                                setFilters({ ...filters, end_date: e.target.value })
+                                                            }
+                                                            className="h-8"
+                                                        />
+                                                    </div>
+                                                </th>
+                                                <th className="py-2 px-2">
+                                                    User
                                                     <Input
-                                                        type="date"
-                                                        value={filters.start_date}
+                                                        placeholder="Filter user"
+                                                        value={filters.user_name}
                                                         onChange={(e) =>
-                                                            setFilters({ ...filters, start_date: e.target.value })
+                                                            setFilters({ ...filters, user_name: e.target.value })
                                                         }
-                                                        className="h-8"
+                                                        className="h-8 mt-1"
                                                     />
+                                                </th>
+                                                <th className="py-2 px-2 align-top">
+                                                    <div className="flex flex-col">
+                                                        <span className="mb-1">Action</span>
+                                                        <select
+                                                            className="border rounded h-8 px-1 text-sm"
+                                                            value={filters.action}
+                                                            onChange={(e) =>
+                                                                setFilters({ ...filters, action: e.target.value })
+                                                            }
+                                                        >
+                                                            <option value="">All</option>
+                                                            <option value="RESERVED">RESERVED</option>
+                                                            <option value="RELEASED">RELEASED</option>
+                                                            <option value="ADDED">ADDED</option>
+                                                            <option value="DELETED">DELETED</option>
+                                                        </select>
+                                                    </div>
+                                                </th>
+                                                <th className="py-2 px-2">
+                                                    EK-code
                                                     <Input
-                                                        type="date"
-                                                        value={filters.end_date}
-                                                        onChange={(e) =>
-                                                            setFilters({ ...filters, end_date: e.target.value })
-                                                        }
-                                                        className="h-8"
+                                                        placeholder="Filter code"
+                                                        value={filters.code}
+                                                        onChange={(e) => {
+                                                            const trimmed = e.target.value.trim();
+                                                            setFilters({ ...filters, code: trimmed });
+                                                        }}
+                                                        className="h-8 mt-1"
                                                     />
-                                                </div>
-                                            </th>
-                                            <th className="py-2 px-2">
-                                                User
-                                                <Input
-                                                    placeholder="Filter user"
-                                                    value={filters.user_name}
-                                                    onChange={(e) =>
-                                                        setFilters({ ...filters, user_name: e.target.value })
-                                                    }
-                                                    className="h-8 mt-1"
-                                                />
-                                            </th>
-                                            <th className="py-2 px-2 align-top">
-                                                <div className="flex flex-col">
-                                                    <span className="mb-1">Action</span>
-                                                    <select
-                                                        className="border rounded h-8 px-1 text-sm"
-                                                        value={filters.action}
-                                                        onChange={(e) =>
-                                                            setFilters({ ...filters, action: e.target.value })
-                                                        }
-                                                    >
-                                                        <option value="">All</option>
-                                                        <option value="RESERVED">RESERVED</option>
-                                                        <option value="RELEASED">RELEASED</option>
-                                                        <option value="ADDED">ADDED</option>
-                                                        <option value="DELETED">DELETED</option>
-                                                    </select>
-                                                </div>
-                                            </th>
-                                            <th className="py-2 px-2">
-                                                EK-code
-                                                <Input
-                                                    placeholder="Filter code"
-                                                    value={filters.code}
-                                                    onChange={(e) => {
-                                                        const trimmed = e.target.value.trim();
-                                                        setFilters({ ...filters, code: trimmed });
-                                                    }}
-                                                    className="h-8 mt-1"
-                                                />
-                                            </th>
-                                            <th className="py-2 px-2">Comments</th>
-                                        </tr>
+                                                </th>
+                                                <th className="py-2 px-2">Comments</th>
+                                            </tr>
                                         </thead>
 
                                         <tbody>
-                                        {logs.map((log, i) => (
-                                            <tr
-                                                key={log.id}
-                                                className="border-b"
-                                                style={{
-                                                    backgroundColor: i % 2 === 0 ? "#f8fafc" : "#f1f5f9",
-                                                    color: "#1f1f1f",
-                                                }}
-                                            >
-                                                <td className="py-2 px-2 whitespace-nowrap">
-                                                    {log.logged_at_str}
-                                                </td>
-                                                <td className="py-2 px-2">{log.user_name}</td>
-                                                <td className="py-2 px-2">{log.action}</td>
-                                                <td className="py-2 px-2 font-mono">{log.code}</td>
-                                                <td className="py-2 px-2">{log.note || "-"}</td>
-                                            </tr>
-                                        ))}
-
-                                        {!loading && logs.length === 0 && (
-                                            <tr>
-                                                <td
-                                                    colSpan={6}
-                                                    className="py-4 text-center text-muted-foreground"
+                                            {logs.map((log, i) => (
+                                                <tr
+                                                    key={log.id}
+                                                    className="border-b"
+                                                    style={{
+                                                        backgroundColor: i % 2 === 0 ? "#f8fafc" : "#f1f5f9",
+                                                        color: "#1f1f1f",
+                                                    }}
                                                 >
-                                                    No records found
-                                                </td>
-                                            </tr>
-                                        )}
+                                                    <td className="py-2 px-2 whitespace-nowrap">
+                                                        {log.logged_at_str}
+                                                    </td>
+                                                    <td className="py-2 px-2">{log.user_name}</td>
+                                                    <td className="py-2 px-2">{log.action}</td>
+                                                    <td className="py-2 px-2 font-mono">{log.code}</td>
+                                                    <td className="py-2 px-2">{log.note || "-"}</td>
+                                                </tr>
+                                            ))}
 
-                                        {loading && (
-                                            <tr>
-                                                <td
-                                                    colSpan={6}
-                                                    className="py-4 text-center text-muted-foreground"
-                                                >
-                                                    Loading...
-                                                </td>
-                                            </tr>
-                                        )}
+                                            {!loading && logs.length === 0 && (
+                                                <tr>
+                                                    <td
+                                                        colSpan={6}
+                                                        className="py-4 text-center text-muted-foreground"
+                                                    >
+                                                        No records found
+                                                    </td>
+                                                </tr>
+                                            )}
+
+                                            {loading && (
+                                                <tr>
+                                                    <td
+                                                        colSpan={6}
+                                                        className="py-4 text-center text-muted-foreground"
+                                                    >
+                                                        Loading...
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1000,8 +1008,8 @@ export default function AdminDashboard() {
                                     Previous
                                 </Button>
                                 <span>
-                  Page {page} of {totalPages || 1}
-                </span>
+                                    Page {page} of {totalPages || 1}
+                                </span>
                                 <Button
                                     variant="outline"
                                     onClick={() => {
