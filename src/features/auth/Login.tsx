@@ -103,40 +103,44 @@ export default function Login() {
     };
 
     return (
-        <main className="container py-12">
+        <main className="container py-12 font-inter text-slate-800">
             <div className="max-w-md mx-auto">
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 bg-clip-text text-transparent">
+                {/* Title */}
+                <div className="text-center mb-10">
+                    <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent py-1">
                         Get your Ek-Code
                     </h1>
-
-                    <p className="mt-2 text-muted-foreground">
+                    <p className="text-slate-500 text-sm">
                         Manage Ek-Codes across regions in simple steps
                     </p>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-2xl font-extrabold text-center text-gray-900 mb-6 leading-tight tracking-tight">
+                <Card className="border border-slate-200 rounded-2xl hover:shadow-md transition">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-2xl font-extrabold text-center text-slate-900 leading-tight tracking-tight">
                             Login
                         </CardTitle>
                     </CardHeader>
+
                     <CardContent>
-                        <form className="space-y-4" onSubmit={handleLogin}>
-                            <div className="space-y-2">
-                                <label htmlFor="username" className="text-sm font-medium">
+                        <form className="space-y-5" onSubmit={handleLogin}>
+                            {/* Username */}
+                            <div className="space-y-1.5">
+                                <label htmlFor="username" className="text-sm font-medium text-slate-700">
                                     Username
                                 </label>
-                                <br />
                                 <Input
                                     id="username"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     placeholder="Enter username or email"
+                                    className="rounded-lg border-slate-300 focus:ring-2 focus:ring-indigo-400"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <label htmlFor="password" className="text-sm font-medium">
+
+                            {/* Password */}
+                            <div className="space-y-1.5">
+                                <label htmlFor="password" className="text-sm font-medium text-slate-700">
                                     Password
                                 </label>
                                 <Input
@@ -145,31 +149,43 @@ export default function Login() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Enter password"
+                                    className="rounded-lg border-slate-300 focus:ring-2 focus:ring-indigo-400"
                                 />
                             </div>
 
-                            {/* REMEMBER ME CHECK BOX  */}
-
-                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-blue-600 cursor-pointer select-none">
+                            {/* Remember me */}
+                            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 select-none">
                                 <input
                                     type="checkbox"
                                     checked={remember}
                                     onChange={() => setRemember(!remember)}
-                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-2"
+                                    className="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-2"
                                 />
-                                <span>Remember Me</span>
+                                <span>Remember me</span>
                             </label>
 
-                            {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+                            {/* Error */}
+                            {error && (
+                                <p className="text-rose-600 text-sm" role="alert">
+                                    {error}
+                                </p>
+                            )}
+
+                            {/* Submit */}
                             <Button
                                 type="submit"
-                                className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white font-semibold px-6 py-3 rounded-full shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
+                                disabled={loading}
+                                className="w-full bg-gradient-to-r from-indigo-600 via-violet-500 to-fuchsia-500 text-white font-semibold px-6 py-3 rounded-full shadow-sm hover:shadow-md disabled:opacity-60"
                             >
-                                Sign in
+                                {loading ? "Signing in…" : "Sign in"}
                             </Button>
                         </form>
                     </CardContent>
                 </Card>
+
+                <p className="text-center text-xs text-slate-500 mt-4">
+                    Tip: If you’re on a shared device, keep “Remember me” unchecked.
+                </p>
             </div>
         </main>
     );
