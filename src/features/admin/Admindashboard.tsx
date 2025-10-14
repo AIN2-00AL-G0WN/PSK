@@ -501,33 +501,42 @@ export default function AdminDashboard() {
                     <h2 className="text-xl font-semibold">Code Summary</h2>
                 </div>
                 <div className="grid gap-6 md:grid-cols-3">
-                    <Card className="hover:shadow-md transition">
+                    <Card className="hover:shadow-md transition flex flex-col items-center justify-center text-center">
                         <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2">
+                            <CardTitle className="flex items-center justify-center gap-2">
                                 <ShieldCheck className="h-4 w-4 text-indigo-600" />
                                 Total EK-codes
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="text-3xl font-bold">{totalCodes}</CardContent>
+                        <CardContent className="text-3xl font-bold">
+                            {totalCodes}
+                        </CardContent>
                     </Card>
-                    <Card className="hover:shadow-md transition">
+
+                    <Card className="hover:shadow-md transition flex flex-col items-center justify-center text-center">
                         <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2">
+                            <CardTitle className="flex items-center justify-center gap-2">
                                 <Boxes className="h-4 w-4 text-rose-600" />
                                 Used (Reserved)
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="text-3xl font-bold text-rose-600">{usedCodes}</CardContent>
+                        <CardContent className="text-3xl font-bold text-rose-600">
+                            {usedCodes}
+                        </CardContent>
                     </Card>
-                    <Card className="hover:shadow-md transition">
+
+                    <Card className="hover:shadow-md transition flex flex-col items-center justify-center text-center">
                         <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2">
+                            <CardTitle className="flex items-center justify-center gap-2">
                                 <Boxes className="h-4 w-4 text-emerald-600" />
                                 Available
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="text-3xl font-bold text-emerald-600">{unusedCodes}</CardContent>
+                        <CardContent className="text-3xl font-bold text-emerald-600">
+                            {unusedCodes}
+                        </CardContent>
                     </Card>
+
                 </div>
             </section>
 
@@ -681,9 +690,15 @@ export default function AdminDashboard() {
                                 />
                             </div>
 
-                            <Button size="sm" onClick={handleAddCodes} className="sm:w-auto w-full">
+                            <Button
+                                size="sm"
+                                onClick={handleAddCodes}
+                                className="w-4/4 mx-auto"
+                            >
                                 Add Code
                             </Button>
+
+
                         </CardContent>
                     </Card>
 
@@ -705,13 +720,13 @@ export default function AdminDashboard() {
                                     value={deleteCodesText}
                                     onChange={(e) => setDeleteCodesText(e.target.value)}
                                     placeholder="Enter codes to delete"
-                                    className="min-h-[120px]"
+                                    className="min-h-[260px]"
                                 />
                             </div>
                             <Button
                                 size="sm"
                                 variant="destructive"
-                                className="sm:w-auto w-full"
+                                className="w-4/4 mx-auto"
                                 onClick={handleDeleteCodes}
                             >
                                 Delete
@@ -919,10 +934,7 @@ export default function AdminDashboard() {
                     <CardHeader>
                         <CardTitle>Activity History</CardTitle>
                     </CardHeader>
-
-                    {/* 👇 Fixed outer height */}
                     <CardContent className="min-h-[600px] flex flex-col">
-                        {/* 🔒 AUTO-CLAMP PAGE (pure inline, no new hooks) */}
                         {page > (totalPages || 1) && (
                             <span className="hidden">
           {setTimeout(() => setPage(Math.max(1, totalPages || 1)), 0)}
