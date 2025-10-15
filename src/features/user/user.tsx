@@ -7,7 +7,7 @@ import { Input } from "../../components/input";
 import { Textarea } from "../../components/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../../components/dialog";
 import { useToast } from "../../components/use-toast";
-
+import { useNavigate } from "react-router-dom";
 /* Icons */
 import {
     LogOut,
@@ -150,8 +150,8 @@ const ActionBadge = ({ action }: { action: string }) => {
 
 /* ---------------- Main Component ---------------- */
 export default function UserPage() {
+    const navigate = useNavigate();
     const { toast } = useToast();
-
     const [teamMember, setTeamMember] = useState("");
     const [country, setCountry] = useState("");
     const [region, setRegion] = useState("");
@@ -258,11 +258,18 @@ export default function UserPage() {
                 {/*</div>*/}
                 <Button
                     variant="outline"
-                    onClick={onLogout}
-                    className="text-sm font-medium px-3.5 py-2 border-slate-300 hover:bg-rose-50 hover:text-rose-600"
+                    size="sm"
+                    onClick={() => {
+                        localStorage.removeItem("user");
+                        sessionStorage.removeItem("user");
+                        navigate("/");
+                    }}
+                    className="group inline-flex items-center gap-2 text-sm font-medium px-3.5 py-2 border-slate-300 hover:bg-rose-50 hover:text-rose-600"
+                    aria-label="Logout"
+                    title="Logout"
                 >
-                    <LogOut className="h-4 w-6 mr-1.5" />
-                    Logout
+                    <span>Logout</span>
+                    <LogOut className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Button>
             </div>
 
@@ -287,7 +294,7 @@ export default function UserPage() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="bg-white text-black rounded-2xl shadow-xl border border-slate-200 max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-center text-slate-800">Generated Ek-Code</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-center text-slate-800">Get Ek-Code</DialogTitle>
                         <DialogDescription className="text-slate-600 text-center">Copy and keep it safe</DialogDescription>
                     </DialogHeader>
                     {generatedCode && (
@@ -299,10 +306,10 @@ export default function UserPage() {
                                 <Button
                                     onClick={async () => { await copyToClipboard(generatedCode); setDialogOpen(false); toast({ title: "Copied", duration: 2000 }); }}
                                 >
-                                    <Copy className="h-4 w-4 mr-1.5" />
+                                    {/*<Copy className="h-4 w-4 mr-1.5" />*/}
                                     Copy & Close
                                 </Button>
-                                <Button variant="outline" onClick={() => setDialogOpen(false)}>Close</Button>
+                                {/*<Button variant="outline" onClick={() => setDialogOpen(false)}>Close</Button>*/}
                             </div>
                         </div>
                     )}
@@ -366,20 +373,53 @@ export default function UserPage() {
                             Submit Back
                         </CardTitle>
                     </CardHeader>
+
                     <CardContent className="flex flex-col gap-3 h-full">
+                        {/* Code Input */}
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium">Code <span className="text-rose-600">*</span></label>
-                            <Input value={submitCode} onChange={(e) => setSubmitCode(e.target.value)} placeholder="Enter the code" className="font-mono" />
+                            <label className="text-sm font-medium">
+                                Code <span className="text-rose-600">*</span>
+                            </label>
+                            <Input
+                                value={submitCode}
+                                onChange={(e) => setSubmitCode(e.target.value)}
+                                placeholder="Enter the code"
+                                className="font-mono"
+                            />
                         </div>
 
+                        {/* Comments */}
                         <div className="space-y-1.5">
                             <label className="text-sm font-medium">Comments (optional)</label>
-                            <Textarea value={submitComments} onChange={(e) => setSubmitComments(e.target.value)} placeholder="Comments (optional)" className="min-h-[96px]" />
+                            <Textarea
+                                value={submitComments}
+                                onChange={(e) => setSubmitComments(e.target.value)}
+                                placeholder="Comments (optional)"
+                                className="min-h-[96px]"
+                            />
                         </div>
 
                         <div className="mt-auto" />
-                        <Button onClick={handleSubmitBack} className="w-full mt-2">
-                            {/*<Undo2 className="h-4 w-4 mr-1.5" />*/}
+
+                        <Button
+                            onClick={() => {
+                                if (!submitCode.trim()) {
+                                    toast({
+                                        title: "Code Required",
+                                        description: "Please enter a code before submitting.",
+                                        variant: "destructive",
+                                    });
+                                    return;
+                                }
+                                handleSubmitBack();
+                            }}
+                            disabled={!submitCode.trim()}
+                            className={`w-full mt-2 ${
+                                !submitCode.trim()
+                                    ? "opacity-50 cursor-not-allowed bg-slate-300 text-slate-500 hover:bg-slate-300"
+                                    : ""
+                            }`}
+                        >
                             Submit
                         </Button>
                     </CardContent>
@@ -439,25 +479,55 @@ export default function UserPage() {
                     <BadgeCheck className="h-4 w-4 text-indigo-600" />
                     <h2 className="text-lg font-semibold">My Reserved Codes</h2>
                 </div>
-                <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm bg-white">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-700">
-                        <tr>
+
+                <div className="relative  overflow-auto rounded-lg border border-violet-200 bg-white shadow-sm">
+                    <table className="w-full text-sm border-collapse">
+                        {/* Sticky Header */}
+                        <thead className="sticky top-0 z-10 bg-violet-100/70 backdrop-blur supports-[backdrop-filter]:bg-violet-100/60 border-b border-violet-300">
+                        <tr className="text-[0.95rem] font-semibold text-violet-800">
                             {["Code", "Tester Name", "Requested At", "Status"].map((h) => (
-                                <th key={h} className="px-4 py-2 text-left font-medium">{h}</th>
+                                <th
+                                    key={h}
+                                    className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0"
+                                >
+                                    {h}
+                                </th>
                             ))}
                         </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
-                        {reserved.length ? reserved.map((r, i) => (
-                            <tr key={i} className="hover:bg-slate-50">
-                                <td className="px-4 py-2 font-mono">{r.code}</td>
-                                <td className="px-4 py-2">{r.tester_name || "-"}</td>
-                                <td className="px-4 py-2">{r.requested_at ? formatLocalDate(r.requested_at) : "-"}</td>
-                                <td className="px-4 py-2"><ActionBadge action={r.status || "-"} /></td>
+
+                        <tbody className="divide-y divide-violet-200">
+                        {reserved.length ? (
+                            reserved.map((r, i) => (
+                                <tr
+                                    key={i}
+                                    className={`transition ${
+                                        i % 2 ? "bg-violet-50/40" : "bg-white"
+                                    } hover:bg-violet-50/70`}
+                                >
+                                    <td className="px-4 py-2 text-center font-mono border-r border-violet-200 last:border-r-0">
+                                        {r.code}
+                                    </td>
+                                    <td className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0">
+                                        {r.tester_name || "-"}
+                                    </td>
+                                    <td className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0">
+                                        {r.requested_at ? formatLocalDate(r.requested_at) : "-"}
+                                    </td>
+                                    <td className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0">
+                                        <ActionBadge action={r.status || "-"} />
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td
+                                    colSpan={4}
+                                    className="text-center py-6 text-slate-500"
+                                >
+                                    No reserved codes
+                                </td>
                             </tr>
-                        )) : (
-                            <tr><td colSpan={4} className="text-center py-4 text-slate-500">No reserved codes</td></tr>
                         )}
                         </tbody>
                     </table>
@@ -469,39 +539,65 @@ export default function UserPage() {
                 <div className="flex items-center justify-between mb-3">
                     <div className="inline-flex items-center gap-2">
                         <FileClock className="h-4 w-4 text-violet-600" />
-                        <h2 className="text-lg font-semibold">My Logs</h2>
+                        <h2 className="text-lg font-semibold text-violet-800">My Logs</h2>
                     </div>
                     <div className="relative max-w-xs w-full">
-                        <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search logs..." className="pl-9 text-sm" />
+                        <Input
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search logs..."
+                            className="pl-9 text-sm"
+                        />
                         <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                     </div>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm bg-white">
+                <div className="overflow-x-auto border border-violet-300 rounded-lg shadow-sm bg-white">
                     <table className="min-w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-700">
+                        <thead className="bg-violet-200 text-violet-900 uppercase">
                         <tr>
-                            {["Code", "Action", "User Name", "Tester Name", "Email", "Comments", "Logged At"].map((h) => (
-                                <th key={h} className="px-4 py-2 text-left font-medium">{h}</th>
+                            {["Code", "Action", "Comments", "Logged At"].map((h, index, arr) => (
+                                <th
+                                    key={h}
+                                    className={`px-4 py-2 font-bold text-center border-b border-violet-300 ${
+                                        index !== arr.length - 1 ? "border-r border-violet-300" : ""
+                                    }`}
+                                >
+                                    {h}
+                                </th>
                             ))}
                         </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
-                        {filteredHistory.length ? filteredHistory.map((h, i) => (
-                            <tr key={i} className="hover:bg-slate-50 transition">
-                                <td className="px-4 py-2 font-mono">{h.code || "-"}</td>
-                                <td className="px-4 py-2"><ActionBadge action={h.action || "-"} /></td>
-                                <td className="px-4 py-2">{h.user_name || "-"}</td>
-                                <td className="px-4 py-2">{h.tester_name || "-"}</td>
-                                <td className="px-4 py-2 inline-flex items-center gap-1">
-                                    <Mail className="h-3.5 w-3.5 text-slate-400" />
-                                    {h.contact_email || "-"}
+
+                        <tbody className="divide-y divide-violet-100">
+                        {filteredHistory.length ? (
+                            filteredHistory.map((h, i) => (
+                                <tr
+                                    key={i}
+                                    className={`${
+                                        i % 2 === 0 ? "bg-white" : "bg-violet-50"
+                                    } hover:bg-violet-100 transition`}
+                                >
+                                    <td className="px-4 py-2 font-mono text-center  border-r border-violet-200">
+                                        {h.code || "-"}
+                                    </td>
+                                    <td className="px-4 py-2 text-center  border-r border-violet-200">
+                                        <ActionBadge action={h.action || "-"} />
+                                    </td>
+                                    <td className="px-4 py-2 whitespace-normal break-words max-w-[300px] text-center  border-r border-violet-200">
+                                        {h.note || "-"}
+                                    </td>
+                                    <td className="px-4 py-2 text-center ">
+                                        {h.logged_at ? formatLocalDate(h.logged_at) : "-"}
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={4} className="text-center py-4 text-slate-500">
+                                    No logs found
                                 </td>
-                                <td className="px-4 py-2">{h.note || "-"}</td>
-                                <td className="px-4 py-2">{h.logged_at ? formatLocalDate(h.logged_at) : "-"}</td>
                             </tr>
-                        )) : (
-                            <tr><td colSpan={7} className="text-center py-4 text-slate-500">No logs found</td></tr>
                         )}
                         </tbody>
                     </table>

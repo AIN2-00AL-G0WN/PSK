@@ -258,7 +258,11 @@ export default function AdminDashboard() {
     }
 
     /* ---------- User create/update ---------- */
-    const handleCreateOrUpdateUser = async () => {
+    // Replace your current handleCreateOrUpdateUser with this:
+    const handleCreateOrUpdateUser = async (e?: React.MouseEvent | React.FormEvent) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+
         if (!teamName || !userName || !userEmail || !userPassword) {
             toast({
                 title: "Validation Error",
@@ -277,28 +281,51 @@ export default function AdminDashboard() {
                 is_admin: "false",
             });
 
-            if (editingUser) {
-                await apiRequest(
-                    `/admin/users/update?id=${editingUser.id}&${params.toString()}`,
-                    { method: "PATCH" }
-                );
-                toast({ title: "User Updated", description: "Details saved successfully." });
-            } else {
-                await apiRequest(`/admin/users/create?${params.toString()}`, {
-                    method: "POST",
-                });
-                toast({ title: "User Created", description: "New user added." });
-            }
+            // call API
+            const endpoint = editingUser
+                ? `/admin/users/update?id=${editingUser.id}&${params.toString()}`
+                : `/admin/users/create?${params.toString()}`;
 
-            // ⚡ Quick hack: reload + auto scroll to user section
-            window.location.href = `${window.location.pathname}#team-user-section`;
-            window.location.reload();
+            const method = editingUser ? "PATCH" : "POST";
+            const data = await apiRequest(endpoint, { method } as any); // keep your apiRequest
 
-        } catch (err) {
+            // toast
+            toast({
+                title: editingUser ? "User Updated" : "User Created",
+                description: editingUser ? "Details saved successfully." : "New user added.",
+            });
+
+            // Update table without reload
+            setUsers(prev => {
+                if (editingUser) {
+                    // if API returns updated user, prefer it; otherwise patch fields locally
+                    const updated = data?.id ? data : { ...editingUser, team_name: teamName, user_name: userName, contact_email: userEmail };
+                    return prev.map(u => (u.id === editingUser.id ? updated : u));
+                } else {
+                    // if API returns created user, append; else create a minimal row
+                    const created = data?.id
+                        ? data
+                        : { id: Math.random(), team_name: teamName, user_name: userName, contact_email: userEmail, reserved_count: 0, is_admin: false };
+                    return [...prev, created];
+                }
+            });
+
+            // reset form state
+            setTeamName("");
+            setUserName("");
+            setUserEmail("");
+            setUserPassword("");
+            setEditingUser(null);
+
+            // smooth scroll to the section (optional)
+            history.replaceState(null, "", "#team-user-section");
+            document.getElementById("team-user-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+        } catch (err: any) {
             console.error("Error creating/updating user:", err);
             toast({
                 title: "Action Failed",
-                description: err.message || "Please try again.",
+                description: err?.message || "Please try again.",
                 variant: "destructive",
             });
         }
@@ -491,7 +518,7 @@ export default function AdminDashboard() {
                 <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">
                     Admin Dashboard
                 </h1>
-                <p className="mt-2 text-slate-500 text-sm">Manage users, EK-codes, and activity</p>
+                <p className="mt-2 text-slate-500 text-sm">Simple control. Smarter management</p>
             </div>
 
             {/* Code Summary */}
@@ -800,7 +827,11 @@ export default function AdminDashboard() {
                                 </button>
                             </div>
 
-                            <Button className="w-full" onClick={handleCreateOrUpdateUser}>
+                            <Button
+                                type="button"
+                                className="w-full"
+                                onClick={handleCreateOrUpdateUser}
+                            >
                                 {editingUser ? "Save Changes" : "Create User"}
                             </Button>
                         </CardContent>
@@ -823,14 +854,15 @@ export default function AdminDashboard() {
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
-                            <div className="max-h-[280px] overflow-y-auto border rounded-md">
-                                <Table className="min-w-full">
-                                    <TableHeader className="sticky top-0 bg-white z-10 border-b">
-                                        <TableRow className="align-middle">
-                                            <TableHead>Team Name</TableHead>
-                                            <TableHead>Email</TableHead>
-                                            <TableHead>Codes Assigned</TableHead>
-                                            <TableHead className="text-center">Actions</TableHead>
+                            <div className="relative max-h-[280px] overflow-y-auto border rounded-md">
+                                <Table className="min-w-full text-sm">
+                                    {/* 🟣 Fixed Header */}
+                                    <TableHeader className="sticky top-0 z-10 bg-indigo-50 shadow-sm">
+                                        <TableRow className="text-shadow-indigo-100 font-semibold">
+                                            <TableHead className="py-3 px-2 text-center">Team Name</TableHead>
+                                            <TableHead className="py-3 px-2 text-center">Email</TableHead>
+                                            <TableHead className="py-3 px-2 text-center">Codes Assigned</TableHead>
+                                            <TableHead className="py-3 px-2 text-center">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
 
@@ -839,14 +871,15 @@ export default function AdminDashboard() {
                                             filteredUsers.map((u, index) => (
                                                 <TableRow
                                                     key={`${u.id || u.contact_email}_${index}`}
-                                                    className={index % 2 ? "bg-slate-50" : "bg-white"}
+                                                    className={`${index % 2 ? "bg-slate-50" : "bg-white"} hover:bg-indigo-50/50 transition`}
                                                 >
-                                                    <TableCell className="font-medium">{u.team_name}</TableCell>
-                                                    <TableCell>{u.contact_email}</TableCell>
-                                                    <TableCell>{u.reserved_count || 0}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex gap-2 justify-end">
+                                                    <TableCell className="font-medium text-center">{u.team_name}</TableCell>
+                                                    <TableCell className="text-center">{u.contact_email}</TableCell>
+                                                    <TableCell className="text-center">{u.reserved_count || 0}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div className="flex gap-2 justify-center">
                                                             <Button
+                                                                type="button"
                                                                 size="sm"
                                                                 variant="outline"
                                                                 onClick={() => {
@@ -863,6 +896,7 @@ export default function AdminDashboard() {
                                                             </Button>
 
                                                             <Button
+                                                                type="button"
                                                                 size="sm"
                                                                 variant="destructive"
                                                                 onClick={() => setUserToDelete(u.id)}
@@ -877,10 +911,7 @@ export default function AdminDashboard() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell
-                                                    colSpan={4}
-                                                    className="text-center text-muted-foreground"
-                                                >
+                                                <TableCell colSpan={4} className="text-center py-4 text-slate-500">
                                                     No users found
                                                 </TableCell>
                                             </TableRow>
@@ -899,10 +930,16 @@ export default function AdminDashboard() {
                                     <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
                                     <p className="mb-4">Are you sure you want to delete this user?</p>
                                     <div className="flex justify-end gap-2">
-                                        <Button size="sm" variant="outline" onClick={() => setUserToDelete(null)}>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setUserToDelete(null)}
+                                        >
                                             Cancel
                                         </Button>
                                         <Button
+                                            type="button"
                                             size="sm"
                                             variant="destructive"
                                             onClick={async () => {
@@ -920,6 +957,7 @@ export default function AdminDashboard() {
                     </Card>
                 </div>
             </section>
+
 
             <Separator />
 
@@ -942,12 +980,12 @@ export default function AdminDashboard() {
                         )}
 
                         {/* Legend */}
-                        <div className="flex flex-wrap gap-3 mb-4 text-sm">
-                            <span className="px-2 py-1 rounded bg-amber-100 text-amber-800 font-semibold">RESERVED</span>
-                            <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 font-semibold">RELEASED</span>
-                            <span className="px-2 py-1 rounded bg-sky-100 text-sky-700 font-semibold">ADDED</span>
-                            <span className="px-2 py-1 rounded bg-rose-100 text-rose-800 font-semibold">DELETED</span>
-                        </div>
+                        {/*<div className="flex flex-wrap gap-3 mb-4 text-sm">*/}
+                        {/*    <span className="px-2 py-1 rounded bg-amber-100 text-amber-800 font-semibold">RESERVED</span>*/}
+                        {/*    <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 font-semibold">RELEASED</span>*/}
+                        {/*    <span className="px-2 py-1 rounded bg-sky-100 text-sky-700 font-semibold">ADDED</span>*/}
+                        {/*    <span className="px-2 py-1 rounded bg-rose-100 text-rose-800 font-semibold">DELETED</span>*/}
+                        {/*</div>*/}
 
                         {/* 👇 Fixed scrollable table height ~15 rows */}
                         <div className="relative h-[480px] overflow-auto rounded-lg border bg-white">
@@ -955,41 +993,47 @@ export default function AdminDashboard() {
                                 <thead className="sticky top-0 bg-slate-100 z-10">
                                 <tr className="text-left border-b text-[0.95rem] font-semibold text-slate-700">
                                     <th className="py-2 px-2 min-w-[240px]">
-                                        Date
-                                        <div className="flex gap-1 mt-1">
-                                            <Input
-                                                type="date"
-                                                value={filters.start_date}
-                                                onChange={(e) =>
-                                                    setFilters({ ...filters, start_date: e.target.value })
-                                                }
-                                                className="h-8"
-                                            />
-                                            <Input
-                                                type="date"
-                                                value={filters.end_date}
-                                                onChange={(e) =>
-                                                    setFilters({ ...filters, end_date: e.target.value })
-                                                }
-                                                className="h-8"
-                                            />
-                                        </div>
-                                        {/* 🧊 Human-friendly preview in DD-MM-YYYY */}
-                                        <div className="mt-1 text-xs text-slate-500">
-                                            {filters.start_date
-                                                ? `From: ${formatDisplayDate(filters.start_date)}`
-                                                : "From: —"}
-                                            {"  "}
-                                            {filters.end_date
-                                                ? ` | To: ${formatDisplayDate(filters.end_date)}`
-                                                : " | To: —"}
+                                        <div className="flex flex-col pt-6 gap-1"> {/* Adds space above the inputs */}
+                                            <div className="flex gap-1">
+                                                <Input
+                                                    type="date"
+                                                    value={filters.start_date}
+                                                    onChange={(e) =>
+                                                        setFilters({ ...filters, start_date: e.target.value })
+                                                    }
+                                                    className="h-8"
+                                                />
+                                                <Input
+                                                    type="date"
+                                                    value={filters.end_date}
+                                                    onChange={(e) =>
+                                                        setFilters({ ...filters, end_date: e.target.value })
+                                                    }
+                                                    className="h-8"
+                                                />
+                                            </div>
+                                            {/* 🧊 Human-friendly preview in DD-MM-YYYY */}
+                                            <div className="text-xs flex gap-4">
+                                                  <span className="font-bold text-slate-800">
+                                                    {filters.start_date
+                                                        ? `From: ${formatDisplayDate(filters.start_date)}`
+                                                        : "From: —"}
+                                                  </span>
+                                                                                                <span className="font-bold text-slate-800">
+                                                    {filters.end_date
+                                                        ? `To: ${formatDisplayDate(filters.end_date)}`
+                                                        : "To: —"}
+                                                  </span>
+                                            </div>
+
                                         </div>
                                     </th>
 
+
                                     <th className="py-2 px-2 min-w-[180px]">
-                                        User
+                                        {/*User*/}
                                         <Input
-                                            placeholder="Filter user"
+                                            placeholder="Filter by user"
                                             value={filters.user_name}
                                             onChange={(e) =>
                                                 setFilters({ ...filters, user_name: e.target.value })
@@ -999,8 +1043,7 @@ export default function AdminDashboard() {
                                     </th>
 
                                     <th className="py-2 px-2 align-top min-w-[140px]">
-                                        <div className="flex flex-col">
-                                            <span className="mb-1">Action</span>
+                                        <div className="flex flex-col justify-end h-full pt-6"> {/* Adds space above */}
                                             <select
                                                 className="border rounded h-8 px-1 text-sm"
                                                 value={filters.action}
@@ -1017,10 +1060,12 @@ export default function AdminDashboard() {
                                         </div>
                                     </th>
 
+
+
                                     <th className="py-2 px-2 min-w-[180px]">
-                                        EK-code
+                                        {/*EK-code*/}
                                         <Input
-                                            placeholder="Filter code"
+                                            placeholder="Filter by EK-code"
                                             value={filters.code}
                                             onChange={(e) =>
                                                 setFilters({ ...filters, code: e.target.value.trim() })
