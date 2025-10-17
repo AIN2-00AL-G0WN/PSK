@@ -11,9 +11,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.contact_email == form_data.username).first()
+    email = form_data.username.strip().lower()
+    password = form_data.password.strip()
+    user = db.query(User).filter(User.contact_email == email).first()
 
-    if not user or not verify_password(form_data.password, user.password_hash):
+    if not user or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect credentials")
 
     # Derive code_type from team_name or user object

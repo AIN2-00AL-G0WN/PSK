@@ -47,7 +47,7 @@ async def reserve(
         return ReserveResponse(code=code.code, code_type=code.code_type, reservation_token=code.reservation_token)  # or custom dict output
 
     except NoCodesAvailableError:
-        return json_error(409, "no_codes_available", "No codes available right now.")
+        return json_error(404, "no_codes_available", "No codes available right now.")
 
     except Exception:
         # logger.exception("reserve_failed")

@@ -22,6 +22,7 @@ from app.core.exceptions import (AppError,
 from app.db.models import User
 from app.core.security import get_password_hash
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +47,7 @@ async def lifespan(app: FastAPI):
         }
 
         for team, data in users.items():
-            existing = db.query(User).filter(User.team_name == team).first()
+            existing = db.query(User).filter(User.contact_email == data["email"]).first()
             if not existing:
                 user = User(
                     team_name=team,
@@ -58,6 +59,8 @@ async def lifespan(app: FastAPI):
                 db.add(user)
 
         db.commit()
+    except Exception:
+        db.rollback()
 
     finally:
         db.close()
@@ -74,9 +77,10 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(admin_router)
 origins = [
-    "http://192.168.0.105:5173",
-    "http://192.168.0.101:5173",
-    "http://192.168.0.101:8000"
+    "http://146.204.94.85:8000",
+    "http://146.204.94.85:5173",
+    "http://146.205.10.107:8000",
+    "http://192.168.0.101:8000",
 ]
 
 app.add_middleware(
@@ -85,6 +89,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+app.add_middleware(
+
+    GZipMiddleware,
+    minimum_size = 1000
 )
 def ensure_enum_exists():
     ddl = """
@@ -137,10 +146,6 @@ async def code_bulk_add_handler(request: Request, exc: CodeBulkAddError):
     return JSONResponse(
         status_code=422,
         content={
-            "detail": (
-                "Invalid request format or missing required fields. "
-                "The 'countries' field is required unless the code type is 'COMMON'. "
-                "Please review your input and try again."
-            )
+            "detail": exc.message
         }
     )

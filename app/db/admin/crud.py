@@ -105,7 +105,7 @@ def update_user(
     for field, value in updates.items():
         if value is not None:
             setattr(user, field, value)
-    user.created_at = now = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")
+    user.created_at = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")
     return user
 
 
@@ -301,9 +301,16 @@ def get_logs_filtered(
         filters.append(Log.logged_at <= end_date)
 
     if code:
-        filters.append(Log.code == code)
+        filters.append(
+            or_(
+                Log.code.like(f"{code}%"),
+                Log.code.like(f"%{code}")
+            )
+        )
+
     if user_name:
-        filters.append(Log.user_name == user_name)
+        filters.append(Log.user_name.ilike(f"%{user_name}%"))
+
     if action:
         filters.append(Log.action == action.value)
 
@@ -319,6 +326,7 @@ def get_logs_filtered(
     )
 
     return total_count, logs
+
 
 
 

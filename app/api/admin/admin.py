@@ -51,6 +51,7 @@ async def get_count(
             non_usable = count.get("NON_USABLE", 0))
 
     except NoCodesAvailableError:
+        logger.exception()
         return json_error(404,"No codes in the database","Please provide some ek codes")
 
 @router.post("/users/create")
@@ -127,10 +128,11 @@ async def update_user(
         _= Depends(admin_required),
         req: UpdateUserRequest = Depends()
 ):
-    try:
+    # try:
         def work():
             with session_factory() as db:
                 try:
+                    print(req)
                     user = crud.update_user(db=db,
                                             id=req.id,
                                             team_name=req.team_name,
@@ -146,10 +148,12 @@ async def update_user(
                     raise e
         updated_user = await run_in_threadpool(work)
         return updated_user
-    except UserNotFound as e:
-        return json_error(404, f"{status.HTTP_404_NOT_FOUND}","User not found")
-    except Exception as e:
-        return {"error": "Failed to update user"}
+    # except UserNotFound as e:
+    #     logger.exception()
+    #     return json_error(404, f"{status.HTTP_404_NOT_FOUND}","User not found")
+    # except Exception as e:
+    #     logger.exception()
+    #     return {"error": "Failed to update user"}
 
 
 @router.delete("/users/delete")
@@ -290,6 +294,10 @@ async def get_logs(
         return json_error(status_code=400, code="Invalid input", message="start_date cannot be after end_date.")
 
     offset = (page - 1) * page_size
+    if code:
+        code=code.strip()
+    if user_name:
+        user_name=user_name.strip()
 
     def work():
         with session_factory() as db:

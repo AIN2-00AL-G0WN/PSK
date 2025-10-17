@@ -166,7 +166,7 @@ def release_reserved_code(
         user_name=user.user_name,
         contact_email=user.contact_email,
         logged_at=now,
-        note=clearance_id if clearance_id  else note,
+        note=clearance_id if  clearance_id else note,
         region_name=region_name,
         country_name=country_name,
     )
