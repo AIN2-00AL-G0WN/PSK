@@ -65,11 +65,11 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
 
-    logger.info("✅ Startup complete. App is running.")
+    logger.info(" ----------------- Startup complete. App is running ---------------------")
     yield
-    logger.info("🛑 Shutting down thread pool...")
+    logger.info("------------------ Shutting down thread pool... ------------------------")
     executor.shutdown(wait=True)
-    logger.info("✅ Thread pool shut down successfully.")
+    logger.info("------------------ Thread pool shut down successfully -------------------")
 
 app = FastAPI(title="promo-tool",lifespan=lifespan)
 
@@ -77,10 +77,8 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(admin_router)
 origins = [
-    "http://146.204.94.85:8000",
-    "http://146.204.94.85:5173",
-    "http://146.205.10.107:8000",
-    "http://192.168.0.101:8000",
+    "http://146.205.10.159:8000",
+    "http://146.205.10.159:5173",
 ]
 
 app.add_middleware(
