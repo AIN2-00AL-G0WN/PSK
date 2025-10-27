@@ -30,13 +30,13 @@ async function apiRequest(
     endpoint: string,
     body:
         | {
-        tester_name?: string;
-        country?: string;
-        code_type?: string;
-        code?: string;
-        note?: string | undefined;
-        clearance_id?: string;
-    }
+            tester_name?: string;
+            country?: string;
+            code_type?: string;
+            code?: string;
+            note?: string | undefined;
+            clearance_id?: string;
+        }
         | undefined,
     method: "GET" | "POST" = "POST"
 ) {
@@ -75,14 +75,14 @@ function formatLocalDate(date: string | Date) {
 }
 
 const countries = [
-    "Australia","Austria","Belgium","Bulgaria","Canada","Cyprus","Czech Republic","Denmark","Estonia","Finland","France","Germany","Greece","Hong Kong","Hungary","Ireland","Italy","Latvia","Lithuania","Luxembourg","Malta","Netherlands","Norway","NZ","Poland","Portugal","Puerto Rico","Romania","Singapore","Slovakia","Slovenia","Spain","Sweden","Switzerland","UK","US",
+    "Australia", "Austria", "Belgium", "Bulgaria", "Canada", "Cyprus", "Czech Republic", "Denmark", "Estonia", "Finland", "France", "Germany", "Greece", "Hong Kong", "Hungary", "Ireland", "Italy", "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands", "Norway", "NZ", "Poland", "Portugal", "Puerto Rico", "Romania", "Singapore", "Slovakia", "Slovenia", "Spain", "Sweden", "Switzerland", "UK", "US",
 ];
 
 function detectRegion(country: string) {
     const c = country.trim().toLowerCase();
     const sets: Record<string, string[]> = {
         NA: ["us", "canada", "puerto rico"],
-        EU: ["spain","italy","germany","france","portugal","netherlands","hungary","ireland","austria","luxembourg","sweden","lithuania","czech republic","uk","switzerland","cyprus","slovakia","estonia","malta","latvia","romania","greece","slovenia","poland","bulgaria","norway","denmark","finland","belgium"],
+        EU: ["spain", "italy", "germany", "france", "portugal", "netherlands", "hungary", "ireland", "austria", "luxembourg", "sweden", "lithuania", "czech republic", "uk", "switzerland", "cyprus", "slovakia", "estonia", "malta", "latvia", "romania", "greece", "slovenia", "poland", "bulgaria", "norway", "denmark", "finland", "belgium"],
         AP: ["australia", "singapore", "hong kong", "nz"],
     };
     for (const [key, vals] of Object.entries(sets)) if (vals.includes(c)) return key;
@@ -91,8 +91,8 @@ function detectRegion(country: string) {
 
 /* ---------------- Searchable Country Select ---------------- */
 function SearchableSelect({
-                              value, onChange, options, placeholder,
-                          }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
+    value, onChange, options, placeholder,
+}: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
     const [open, setOpen] = useState(false);
     const [filter, setFilter] = useState("");
     const filteredOptions = options.filter((o) => o.toLowerCase().includes(filter.toLowerCase()));
@@ -139,12 +139,12 @@ const ActionBadge = ({ action }: { action: string }) => {
     const cls = styles[A] || "bg-slate-100 text-slate-700 border-slate-200";
     return (
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded border ${cls}`}>
-      {A === "RESERVED" && <KeyRound className="h-3.5 w-3.5" />}
+            {A === "RESERVED" && <KeyRound className="h-3.5 w-3.5" />}
             {A === "RELEASED" && <BadgeCheck className="h-3.5 w-3.5" />}
             {A === "ADDED" && <FileClock className="h-3.5 w-3.5" />}
             {A === "DELETED" && <FileClock className="h-3.5 w-3.5" />}
             {A || "-"}
-    </span>
+        </span>
     );
 };
 
@@ -370,7 +370,7 @@ export default function UserPage() {
                     <CardHeader className="pb-2">
                         <CardTitle className="text-lg font-semibold text-slate-800 inline-flex items-center gap-2">
                             <Undo2 className="h-4 w-4 text-violet-600" />
-                            Submit Back
+                            Submit Back , If Unused
                         </CardTitle>
                     </CardHeader>
 
@@ -414,14 +414,16 @@ export default function UserPage() {
                                 handleSubmitBack();
                             }}
                             disabled={!submitCode.trim()}
-                            className={`w-full mt-2 ${
-                                !submitCode.trim()
+                            className={`w-full mt-2 ${!submitCode.trim()
                                     ? "opacity-50 cursor-not-allowed bg-slate-300 text-slate-500 hover:bg-slate-300"
                                     : ""
-                            }`}
+                                }`}
                         >
                             Submit
                         </Button>
+                        <p className="text-xs text-slate-500 mt-3">
+                            <strong>Note:</strong> Use this option only to return codes that were reserved by mistake or reserved but not used during the onboarding process.
+                        </p>
                     </CardContent>
                 </Card>
 
@@ -484,51 +486,50 @@ export default function UserPage() {
                     <table className="w-full text-sm border-collapse">
                         {/* Sticky Header */}
                         <thead className="sticky top-0 z-10 bg-violet-100/70 backdrop-blur supports-[backdrop-filter]:bg-violet-100/60 border-b border-violet-300">
-                        <tr className="text-[0.95rem] font-semibold text-violet-800">
-                            {["Code", "Tester Name", "Requested At", "Status"].map((h) => (
-                                <th
-                                    key={h}
-                                    className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0"
-                                >
-                                    {h}
-                                </th>
-                            ))}
-                        </tr>
+                            <tr className="text-[0.95rem] font-semibold text-violet-800">
+                                {["Code", "Tester Name", "Requested At", "Status"].map((h) => (
+                                    <th
+                                        key={h}
+                                        className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0"
+                                    >
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
                         </thead>
 
                         <tbody className="divide-y divide-violet-200">
-                        {reserved.length ? (
-                            reserved.map((r, i) => (
-                                <tr
-                                    key={i}
-                                    className={`transition ${
-                                        i % 2 ? "bg-violet-50/40" : "bg-white"
-                                    } hover:bg-violet-50/70`}
-                                >
-                                    <td className="px-4 py-2 text-center font-mono border-r border-violet-200 last:border-r-0">
-                                        {r.code}
-                                    </td>
-                                    <td className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0">
-                                        {r.tester_name || "-"}
-                                    </td>
-                                    <td className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0">
-                                        {r.requested_at ? formatLocalDate(r.requested_at) : "-"}
-                                    </td>
-                                    <td className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0">
-                                        <ActionBadge action={r.status || "-"} />
+                            {reserved.length ? (
+                                reserved.map((r, i) => (
+                                    <tr
+                                        key={i}
+                                        className={`transition ${i % 2 ? "bg-violet-50/40" : "bg-white"
+                                            } hover:bg-violet-50/70`}
+                                    >
+                                        <td className="px-4 py-2 text-center font-mono border-r border-violet-200 last:border-r-0">
+                                            {r.code}
+                                        </td>
+                                        <td className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0">
+                                            {r.tester_name || "-"}
+                                        </td>
+                                        <td className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0">
+                                            {r.requested_at ? formatLocalDate(r.requested_at) : "-"}
+                                        </td>
+                                        <td className="px-4 py-2 text-center border-r border-violet-200 last:border-r-0">
+                                            <ActionBadge action={r.status || "-"} />
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td
+                                        colSpan={4}
+                                        className="text-center py-6 text-slate-500"
+                                    >
+                                        No reserved codes
                                     </td>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td
-                                    colSpan={4}
-                                    className="text-center py-6 text-slate-500"
-                                >
-                                    No reserved codes
-                                </td>
-                            </tr>
-                        )}
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -555,50 +556,48 @@ export default function UserPage() {
                 <div className="overflow-x-auto border border-violet-300 rounded-lg shadow-sm bg-white">
                     <table className="min-w-full text-sm">
                         <thead className="bg-violet-200 text-violet-900 uppercase">
-                        <tr>
-                            {["Code", "Action", "Comments", "Logged At"].map((h, index, arr) => (
-                                <th
-                                    key={h}
-                                    className={`px-4 py-2 font-bold text-center border-b border-violet-300 ${
-                                        index !== arr.length - 1 ? "border-r border-violet-300" : ""
-                                    }`}
-                                >
-                                    {h}
-                                </th>
-                            ))}
-                        </tr>
+                            <tr>
+                                {["Code", "Action", "Comments", "Logged At"].map((h, index, arr) => (
+                                    <th
+                                        key={h}
+                                        className={`px-4 py-2 font-bold text-center border-b border-violet-300 ${index !== arr.length - 1 ? "border-r border-violet-300" : ""
+                                            }`}
+                                    >
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
                         </thead>
 
                         <tbody className="divide-y divide-violet-100">
-                        {filteredHistory.length ? (
-                            filteredHistory.map((h, i) => (
-                                <tr
-                                    key={i}
-                                    className={`${
-                                        i % 2 === 0 ? "bg-white" : "bg-violet-50"
-                                    } hover:bg-violet-100 transition`}
-                                >
-                                    <td className="px-4 py-2 font-mono text-center  border-r border-violet-200">
-                                        {h.code || "-"}
-                                    </td>
-                                    <td className="px-4 py-2 text-center  border-r border-violet-200">
-                                        <ActionBadge action={h.action || "-"} />
-                                    </td>
-                                    <td className="px-4 py-2 whitespace-normal break-words max-w-[300px] text-center  border-r border-violet-200">
-                                        {h.note || "-"}
-                                    </td>
-                                    <td className="px-4 py-2 text-center ">
-                                        {h.logged_at ? formatLocalDate(h.logged_at) : "-"}
+                            {filteredHistory.length ? (
+                                filteredHistory.map((h, i) => (
+                                    <tr
+                                        key={i}
+                                        className={`${i % 2 === 0 ? "bg-white" : "bg-violet-50"
+                                            } hover:bg-violet-100 transition`}
+                                    >
+                                        <td className="px-4 py-2 font-mono text-center  border-r border-violet-200">
+                                            {h.code || "-"}
+                                        </td>
+                                        <td className="px-4 py-2 text-center  border-r border-violet-200">
+                                            <ActionBadge action={h.action || "-"} />
+                                        </td>
+                                        <td className="px-4 py-2 whitespace-normal break-words max-w-[300px] text-center  border-r border-violet-200">
+                                            {h.note || "-"}
+                                        </td>
+                                        <td className="px-4 py-2 text-center ">
+                                            {h.logged_at ? formatLocalDate(h.logged_at) : "-"}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={4} className="text-center py-4 text-slate-500">
+                                        No logs found
                                     </td>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={4} className="text-center py-4 text-slate-500">
-                                    No logs found
-                                </td>
-                            </tr>
-                        )}
+                            )}
                         </tbody>
                     </table>
                 </div>
