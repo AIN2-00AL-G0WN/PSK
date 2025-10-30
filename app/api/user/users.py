@@ -1,10 +1,17 @@
 import logging
+from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.schemas.users.users import ReserveRequest, ReserveResponse, BatchCodes, MarkNonUsableRequest, MarkNonUsableResponse
+from app.schemas.users.users import (ReserveRequest,
+                                     ReserveResponse,
+                                     BatchCodes,
+                                     LogsResponse,
+                                     LogSchema,
+                                     MarkNonUsableRequest,
+                                     MarkNonUsableResponse,
+                                     GetAllCountriesResponse, CodeCommentPayload)
 from app.db.users import crud
 from app.db.models import User
-from app.api.deps import get_db, get_tx_db, get_current_user
+from app.api.deps import  user_required, session_factory
 from app.core.exceptions import (
     NoCodesAvailableError,
     json_error,
@@ -16,92 +23,159 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/reserve", response_model=ReserveResponse)
-def reserve(
+async def reserve(
     req: ReserveRequest,
-    db: Session = Depends(get_tx_db),
-    current_user = Depends(get_current_user),
+    current_user = Depends(user_required),
 ):
     try:
-        code = crud.reserve_one_code(
-            db=db,
-            user_id=current_user.id,
-            tester_name=req.tester_name,
-            region=req.region,
-            team=req.code_type,
-            contact_email=current_user.contact_email,
-        )
+        def work():
+            with session_factory() as db:
+                try:
+                     code = crud.reserve_one_code(
+                        db=db,
+                        user=current_user,
+                        tester_name=req.tester_name,
+                        country =req.country,
+                        code_type=req.code_type)
+                     db.commit()
+                     return code
+                except Exception as e:
+                    db.rollback()
+                    raise e
 
-        db.commit()
-        return ReserveResponse(code=code.code, reservation_token=code.reservation_token)  # or custom dict output
+        code = await run_in_threadpool(work)
+        return ReserveResponse(code=code.code, code_type=code.code_type, reservation_token=code.reservation_token)  # or custom dict output
 
     except NoCodesAvailableError:
-        db.rollback()
-        return json_error(409, "no_codes_available", "No codes available right now.")
+        return json_error(404, "no_codes_available", "No codes available right now.")
 
     except Exception:
-        db.rollback()
-        logger.exception("reserve_failed")
+        # logger.exception("reserve_failed")
         return json_error(500, "reserve_failed", "Server error while reserving code.")
 
 
 
 @router.get("/my", summary="List my reserved codes")
-def list_my_codes(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+async def list_my_codes( current_user = Depends(user_required)):
     try:
-        rows= crud.list_of_codes(db=db, user = current_user)
+        def work():
+            with session_factory() as db:
+                try:
+                     codes = crud.list_of_codes(db=db, user = current_user)
+                     result = []
+                     for code in codes:
+                         result.append({
+                             "code": code.code,
+                             "tester_name": code.tester_name,
+                             "requested_at": code.requested_at,
+                             "reservation_token": code.reservation_token,
+                             "status": code.status.value,
+                             "note": code.note,
+                             "countries": [c.name for c in code.countries],
+                             "regions": list({c.region.name for c in code.countries if c.region}),  # dedupe regions
+                         })
+                     return result
+
+                except Exception as e:
+                    raise e
+
+        rows= await run_in_threadpool(work)
         return [dict(r) for r in rows]
     except NoCodesAvailableError:
         return json_error(409, "no_codes_available", "No codes available right now.")
     except Exception:
-        return json_error(500, "reserve_failed", "Server error while reserving code.")
+        return json_error(500, "Failed to fetch reserved codes(s)", "Server error while reserving code.")
 
 
 
 @router.post("/release")
-def release_code(
+async def release_code(
     payload: BatchCodes,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_tx_db),
+    current_user: User = Depends(user_required)
 ):
     try:
-        released = crud.release_reserved_code(
-            db=db,
-            code=payload.code,
-            clearance_id=payload.clearance_id,
-            note=payload.note,
-            user=current_user,
-        )
-        db.commit()
+        def work():
+            with session_factory() as db:
+                try:
+                    released = crud.release_reserved_code(
+                        db=db,
+                        code=payload.code,
+                        clearance_id=payload.clearance_id,
+                        note=payload.note,
+                        user=current_user,
+                    )
+                    db.commit()
+                    return released
+                except Exception as e:
+                    db.rollback()
+                    raise e
+        released = await run_in_threadpool(work)
         return {"released": released, "requested": payload.code, "clearance_id": payload.clearance_id}
     except ValueError:
-        db.rollback()
-        # logger.exception(f"Code '{payload.code}' not found.")
         return json_error(404,f"Code '{payload.code}' not found.","Failed to release reserved codes.")
     except Exception:
-        db.rollback()
         # logger.exception("release_reserved failed")
         return json_error(500, "release_reserved_failed", "Failed to release reserved codes.")
 
 
-@router.post("/mark-non-usable", response_model=MarkNonUsableResponse)
-def mark_non_usable_endpoint(
-    payload: MarkNonUsableRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_tx_db),
+@router.get("/logs", response_model=LogsResponse)
+async def get_user_logs(user: User =Depends(user_required),):
+    try:
+        def work():
+            with session_factory() as db:
+                return crud.user_logs(db=db,user_id=user.id)
+        logs = await run_in_threadpool(work)
+        logs_response = [LogSchema.from_orm(log) for log in logs]
+        return LogsResponse(logs=logs_response)
+    except Exception as e:
+        raise e
+
+
+@router.get("/countries",response_model=list[GetAllCountriesResponse])
+async def get_all_countries(_=Depends(user_required),):
+    try:
+        def work():
+            with session_factory() as db:
+                return crud.get_all_countries(db)
+
+        result = await run_in_threadpool(work)
+        return [{"id": row.id, "country": row.name} for row in result]
+
+
+    except Exception as e:
+        raise e
+
+
+@router.post("/comment")
+async def add_or_update_comment(
+        payload: CodeCommentPayload,
+        _: User = Depends(user_required)
 ):
     try:
-        updated = crud.mark_non_usable(
-            db=db,
-            user=current_user,
-            code=payload.codes,
-            reason=payload.reason,
-        )
-        db.commit()
+        def work():
+            with session_factory() as db:
+                try:
+                    commented = crud.add_or_update_comment(
+                        db=db,
+                        code=payload.code,
+                        comment=payload.comment,
+                    )
+                    db.commit()
+                    return commented
+                except Exception as e:
+                    db.rollback()
+                    raise e
+
+        commented = await run_in_threadpool(work)
         return {
-            "updated": updated,
-            "requested": payload.codes,
+            "code": payload.code,
+            "comment": commented.note,
+            "message": "Comment added or updsated successfully."
         }
+    except ValueError:
+        return json_error(404, f"Code '{payload.code}' not found.", "Failed to add or update comment.")
     except Exception:
-        db.rollback()
-        # logger.exception("mark_non_usable failed")
-        return json_error(500, "mark_non_usable_failed", "Failed to mark codes as non-usable.")
+        logger.exception("add_or_update_comment failed")
+        return json_error(500, "comment_update_failed", "Failed to add or update comment.")
+
+

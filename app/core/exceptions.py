@@ -24,6 +24,8 @@ class AppError(Exception):
 class NoCodesAvailableError(AppError):
     """ raised when no codes remain to reserve """
 
+class CodeBulkAddError(AppError):
+    """ raised when admin tries to add HSV | OSV codes without country or the input parameters doesn't match the request schema """
 
 class ReservationExpiredError(AppError):
     """ raised when someone tries to confirm after reservation expired """
@@ -35,6 +37,9 @@ class InvalidReservationError(AppError):
 
 class PermissionDeniedError(AppError):
     """ raised when non-admin tries an admin-only action """
+
+class UsersOnlyError(AppError):
+    """ raised when non-user tries a user-only action"""
 
 class UserNotFound(AppError):
     """raised when user is not present in the database"""

@@ -1,120 +1,120 @@
 import uuid
+from zoneinfo import ZoneInfo
+
 from app.core.exceptions import NoCodesAvailableError
-from sqlalchemy import desc
+from sqlalchemy import desc, select
 from datetime import datetime
 from sqlalchemy import  update
 from sqlalchemy.orm import Session
-from app.db.models import Code, Log, User, CodeStatus, CodeAction, CodeType
+from app.db.models import (Code,
+                           Log,
+                           User,
+                           CodeStatus,
+                           CodeAction,
+                           CodeType,
+                           Region,
+                           Country)
 from typing import Optional
+from sqlalchemy.orm import joinedload
+
+
 
 def reserve_one_code(
     db: Session,
-    user_id: int,
+    user: User,
     tester_name: str | None,
-    region: str | None,
-    team: str,
-    contact_email: str,
+    country: str | None,
+    code_type: str,
 ) -> Code:
 
-    def _reserve_code(code_type: str) -> Code | None:
-        query = db.query(Code).filter(
-            Code.status == CodeStatus.CAN_BE_USED.value,
-            Code.code_type == code_type,
+    def _reserve_code(
+        code_type: CodeType,
+        country: str | None = None,
+        user_id: int | None = None,
+        tester_name: str | None = None,
+        contact_email: str | None = None,
+    ) -> Code | None:
+        # Normalize to Enum
+        ct = CodeType(code_type) if isinstance(code_type, str) else code_type
+        # Start with status + code_type filter
+        query = (
+            db.query(Code)
+            .filter(
+                (Code.status == CodeStatus.CAN_BE_USED.value) &   # use Enum, not .value
+                (Code.code_type == ct)
+            )
         )
 
-        if region:
-            query = query.filter(Code.region == region)
+        # For non-COMMON, restrict by associated country
+        if ct != CodeType.COMMON and country:
+            query = query.join(Code.countries).filter(Country.name == country)
 
-        query = query.order_by(Code.requested_at.nullsfirst())  # oldest first
-        query = query.with_for_update(skip_locked=True)
+        # Lock a single candidate row (oldest first, NULLs first)
+        query = query.order_by(Code.requested_at.nullsfirst()).with_for_update(skip_locked=True)
 
-        candidate = query.first()
+        candidate: Code | None = query.first()
         if not candidate:
             return None
 
-        now = datetime.utcnow()
+        now = now = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")
 
         # Update fields
         candidate.user_id = user_id
         candidate.tester_name = tester_name
         candidate.requested_at = now
         candidate.reservation_token = uuid.uuid4()
-        candidate.status = CodeStatus.RESERVED
+        candidate.status = CodeStatus.RESERVED.value   # assign Enum directly
         candidate.released_at = None
 
-        db.flush()  # write changes
+        db.flush()
+
+        # Compute region name if possible
+        region_name = None
+        if country:
+            match = next((cou for cou in candidate.countries if cou.name == country), None)
+            if match and match.region:
+                region_name = match.region.name
 
         # Log the reservation
-        log = Log(
+        db.add(Log(
             code=candidate.code,
-            action=CodeAction.RESERVED,
-            user_name=tester_name,
-            contact_email=contact_email,
-            logged_at=now,
+            user_id=user.id,
+            action=CodeAction.RESERVED.value,
+            user_name=user.user_name,
+            contact_email=user.contact_email,
             tester_name=tester_name,
-        )
-        db.add(log)
+            region_name=region_name,
+            country_name=country,
+            logged_at=now,
+        ))
         db.flush()
 
         return candidate
 
-    # Priority 1: Try with team-specific code
-    row = _reserve_code(code_type=team)
-    if row:
-        return row
-
-    # Priority 2: Fallback to COMMON code
-    row = _reserve_code(code_type=CodeType.COMMON.value)
-    if row:
-        return row
-
-    # None found
-    raise NoCodesAvailableError()
-
-
-
-def mark_non_usable(
-    db: Session,
-    user: User,
-    code: str,
-    reason: str | None = None
-) -> str:
-    now = datetime.utcnow()
-
-
-    code_row = (
-        db.query(Code)
-        .filter(Code.code == code)
-        .with_for_update()
-        .first()
-    )
-
-    if not code_row:
-        raise ValueError(f"Code '{code}' not found.")
-
-
-    code_row.status = CodeStatus.NON_USABLE.value
-    code_row.reserved_until = None
-    code_row.reservation_token = None
-    code_row.user_id = None
-    code_row.tester_name = None
-    code_row.note = reason
-
-    db.flush()
-
-
-    db.add(Log(
-        code=code,
-        action=CodeAction.BLOCKED.value,
-        user_name=user.user_name,
+    # Priority 1: Try with requested code_type
+    row = _reserve_code(
+        code_type=code_type,
+        country=country,
+        user_id=user.id,
+        tester_name=tester_name,
         contact_email=user.contact_email,
-        logged_at=now,
-        note=reason
-    ))
+    )
+    if row:
+        return row
 
-    return code_row.code
+    # Priority 2: Fallback to COMMON type (ignores country restriction if COMMON)
+    row = _reserve_code(
+        code_type=CodeType.COMMON,
+        country=country,
+        user_id=user.id,
+        tester_name=tester_name,
+        contact_email=user.contact_email,
+    )
+    if row:
+        return row
 
-
+    # Nothing available
+    raise NoCodesAvailableError()
 
 def release_reserved_code(
     db: Session,
@@ -124,8 +124,7 @@ def release_reserved_code(
     note: Optional[str] = None,
 ) -> str:
 
-
-    now = datetime.utcnow()
+    now = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y %I:%M:%S %p")
 
     # Step 1: Update the reserved code
     stmt = (
@@ -138,7 +137,7 @@ def release_reserved_code(
             reservation_token=None,
             requested_at=None,
             released_at=now,
-            note=None,
+            note=note,
         )
         .returning(Code.code)
     )
@@ -147,48 +146,119 @@ def release_reserved_code(
     if not result:
         raise ValueError(f"Code '{code}' not found.")
 
+    # Fetch the full code object with relationships (for region/country info)
+    code_obj = db.query(Code).filter_by(code=code).first()
+
+    # Extract region + country info
+    region_name = None
+    country_name = None
+    if code_obj and code_obj.countries:
+        # Just take the first associated country
+        country = code_obj.countries[0]
+        country_name = country.name
+        region_name = country.region.name if country.region else None
+
     # Step 2: Add log entry
     log_entry = Log(
         code=code,
         action=CodeAction.RELEASED.value,
+        user_id=user.id,
         user_name=user.user_name,
         contact_email=user.contact_email,
         logged_at=now,
-        clearance_id=clearance_id,
-        note=note,
+        note=clearance_id if  clearance_id else note,
+        region_name=region_name,
+        country_name=country_name,
     )
-    db.add(log_entry)
 
+    db.add(log_entry)
     return code
 
 
-def list_of_codes(db: Session, user):
 
+def list_of_codes(db: Session, user):
     codes = (
-        db.query(
-            Code.code,
-            Code.tester_name,
-            Code.region,
-            Code.requested_at,
-            Code.reservation_token,
-            Code.status,
-            Code.note,
+        db.query(Code)
+        .options(
+            joinedload(Code.countries).joinedload(Country.region)  # eager load countries + their region
         )
-        .filter(Code.user_id == user.id, Code.status == CodeStatus.RESERVED.value)
-        .order_by(desc(Code.requested_at))
+        .filter(Code.user_id == user.id, Code.status == CodeStatus.RESERVED)
+        .order_by(Code.requested_at.desc())
         .all()
     )
+    return codes
 
-    results = []
-    for c in codes:
-        results.append({
-            "code": c.code,
-            "tester_name": c.tester_name,
-            "region": c.region,
-            "requested_at": c.requested_at,
-            "reservation_token": str(c.reservation_token) if c.reservation_token else None,
-            "status": c.status.value if hasattr(c.status, 'value') else c.status,
-            "note": c.note,
-        })
 
-    return results
+def user_logs(db: Session, user_id: int):
+    stmt = (
+        select(Log)
+        .where(Log.user_id == user_id)
+        .order_by(Log.logged_at.desc())
+        .limit(20)
+    )
+    result = db.execute(stmt).scalars().all()
+    return result
+
+def get_all_countries(db: Session):
+    stmt = select(Country.id, Country.name)
+    result = db.execute(stmt).all()
+    return result
+
+
+def add_or_update_comment(db:Session,code,comment):
+    db_code=db.query(Code).filter(Code.code==code).first()
+    if not db_code:
+        raise NoCodesAvailableError("Code not found or cannot be deleted")
+
+    db_code.note=comment
+    return db_code
+
+# def mark_non_usable(
+#     db: Session,
+#     user: User,
+#     code: str,
+#     reason: str | None = None
+# ) -> str:
+#     try:
+#         now = datetime.utcnow().strftime("%d-%m-%y %I:%M:%S %p")
+#
+#
+#         code_row = (
+#             db.query(Code)
+#             .filter(Code.code == code)
+#             .with_for_update()
+#             .first()
+#         )
+#
+#         if not code_row:
+#             raise ValueError(f"Code '{code}' not found.")
+#
+#
+#         code_row.status = CodeStatus.NON_USABLE.value
+#         code_row.reserved_until = None
+#         code_row.reservation_token = None
+#         code_row.user_id = None
+#         code_row.tester_name = None
+#         code_row.note = reason
+#
+#         db.flush()
+#
+#
+#         db.add(Log(
+#             code=code,
+#             action=CodeAction.BLOCKED.value,
+#             user_name=user.user_name,
+#             contact_email=user.contact_email,
+#             logged_at=now,
+#             note=reason
+#         ))
+#         db.commit()
+#         return code_row.code
+#     except ValueError as e:
+#         db.rollback()
+#         raise  e
+#     except  Exception as e:
+#         db.rollback()
+#         raise e
+
+
