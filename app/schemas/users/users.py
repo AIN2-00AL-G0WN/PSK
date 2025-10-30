@@ -98,7 +98,9 @@ class GetAllCountriesResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
+class CodeCommentPayload(BaseModel):
+    code:str
+    comment:str
 
 # class ConfirmRequest(BaseModel):
 #     code: str
