@@ -205,7 +205,13 @@ def get_all_countries(db: Session):
     return result
 
 
+def add_or_update_comment(db:Session,code,comment):
+    db_code=db.query(Code).filter(Code.code==code).first()
+    if not db_code:
+        raise NoCodesAvailableError("Code not found or cannot be deleted")
 
+    db_code.note=comment
+    return db_code
 
 # def mark_non_usable(
 #     db: Session,
