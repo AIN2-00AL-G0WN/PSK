@@ -8,7 +8,7 @@ from app.schemas.users.users import (ReserveRequest,
                                      LogSchema,
                                      MarkNonUsableRequest,
                                      MarkNonUsableResponse,
-                                     GetAllCountriesResponse)
+                                     GetAllCountriesResponse, CodeCommentPayload)
 from app.db.users import crud
 from app.db.models import User
 from app.api.deps import  user_required, session_factory
@@ -144,4 +144,38 @@ async def get_all_countries(_=Depends(user_required),):
 
     except Exception as e:
         raise e
+
+
+@router.post("/comment")
+async def add_or_update_comment(
+        payload: CodeCommentPayload,
+        _: User = Depends(user_required)
+):
+    try:
+        def work():
+            with session_factory() as db:
+                try:
+                    commented = crud.add_or_update_comment(
+                        db=db,
+                        code=payload.code,
+                        comment=payload.comment,
+                    )
+                    db.commit()
+                    return commented
+                except Exception as e:
+                    db.rollback()
+                    raise e
+
+        commented = await run_in_threadpool(work)
+        return {
+            "code": payload.code,
+            "comment": commented.note,
+            "message": "Comment added or updsated successfully."
+        }
+    except ValueError:
+        return json_error(404, f"Code '{payload.code}' not found.", "Failed to add or update comment.")
+    except Exception:
+        logger.exception("add_or_update_comment failed")
+        return json_error(500, "comment_update_failed", "Failed to add or update comment.")
+
 
